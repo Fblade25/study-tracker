@@ -2,7 +2,12 @@ import datetime
 import math
 
 from PySide6.QtCore import QPoint, QPointF, Qt, QTimer
-from PySide6.QtGui import QColor, QPainter, QPaintEvent, QPen, QPixmap
+from PySide6.QtGui import (
+    QPainter,
+    QPainterPath,
+    QPaintEvent,
+    QPixmap,
+)
 from PySide6.QtWidgets import QWidget
 from styles.colors import Colors
 
@@ -14,9 +19,12 @@ class Clock(QWidget):
 
         self.__timer = QTimer(self)
         self.__timer.timeout.connect(self.repaint)
-        self.__timer.start(1)
+        self.__timer.start(1000 / 144)
 
         self.background = None
+        self.hand_second = None
+        self.hand_minute = None
+        self.hand_hour = None
         self.resizeEvent(None)
 
         self.radius = 0.95 * (min(self.width(), self.height()) / 2)
@@ -24,14 +32,37 @@ class Clock(QWidget):
         self.centerX = int(self.width() / 2)
         self.centerY = int(self.height() / 2)
 
-    def resizeEvent(self, event):
-        """Redraws background of clock."""
-        self.background = QPixmap(self.size())
-        self.background.fill(Qt.transparent)
+    def __generate_clock_hand(self, length) -> QPainterPath:
+        """Returns a QPainterPath representing a clock hand."""
+        path = QPainterPath()
 
-        painter = QPainter(self.background)
+        # Create a triangular hand pointing upwards
+        path.moveTo(0, -length)
+        path.lineTo(-4, 8)
+        path.lineTo(4, 8)
+        path.closeSubpath()
+
+        return path
+
+    def __draw_rotated_hand(
+        self, hand: QPainterPath, painter: QPainter, angle_degrees: float
+    ) -> None:
+        """Rotates the hand to the correct angle."""
+        painter.save()
+        painter.translate(QPoint(self.centerX, self.centerY))
+        painter.rotate(angle_degrees)
+        painter.drawPath(hand)
+        painter.restore()
+
+    def __generate_background(self) -> QPixmap:
+        """Returns QPixmap as background."""
+        background = QPixmap(self.size())
+        background.fill(Qt.transparent)
+
+        painter = QPainter(background)
         painter.setRenderHint(QPainter.Antialiasing)
 
+        # Background circle
         self.radius = 0.95 * (min(self.width(), self.height()) / 2)
 
         self.centerX = int(self.width() / 2)
@@ -45,6 +76,7 @@ class Clock(QWidget):
         angle = -math.pi / 2 + math.pi / 30
         hour = 1
 
+        # Outer marks
         for _ in range(12 * 5):
             angle += math.pi / 30
             hour += 1
@@ -84,75 +116,65 @@ class Clock(QWidget):
                         self.centerY + math.sin(angle) * self.radius * 0.925,
                     ),
                 )
+        r = self.radius * 0.065
 
+        # Middle circle
+        painter.drawEllipse(
+            QPoint(self.centerX, self.centerY),
+            r,
+            r,
+        )
         painter.end()
+        return background
+
+    def resizeEvent(self, event):
+        """Resize items."""
+        self.background = self.__generate_background()
+        self.hand_second = self.__generate_clock_hand(self.radius * 0.95)
+        self.hand_minute = self.__generate_clock_hand(self.radius * 0.80)
+        self.hand_hour = self.__generate_clock_hand(self.radius * 0.40)
+        super().resizeEvent(event)
 
     def paintEvent(self, event: QPaintEvent) -> None:
         """Draws clock animation."""
         super().paintEvent(event)
 
         painter = QPainter(self)
+        painter.setBrush(Colors.TEXT)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        if self.background:
-            painter.drawPixmap(0, 0, self.background)
+        # Check if all elements exist
+        if self.background is None:
+            self.background = self.__generate_background()
+        painter.drawPixmap(0, 0, self.background)
 
-        now = datetime.datetime.now().time()
+        if self.hand_second is None:
+            self.hand_second = self.__generate_clock_hand(self.radius * 0.95)
 
-        seconds = (now.second * 1000000 + now.microsecond) / 1000000
+        if self.hand_minute is None:
+            self.hand_minute = self.__generate_clock_hand(self.radius * 0.75)
 
-        painter.setPen(QPen(QColor(255, 255, 255, int(256 * 0.6)), 3))
-        angle = -math.pi / 2 + seconds * math.pi / 30
-        destX = math.cos(angle) * self.radius * 0.95
-        destY = math.sin(angle) * self.radius * 0.95
-        painter.drawLine(
-            self.centerX,
-            self.centerY,
-            int(self.centerX + destX),
-            int(self.centerY + destY),
-        )
+        if self.hand_hour is None:
+            self.hand_hour = self.__generate_clock_hand(self.radius * 0.40)
 
-        painter.setPen(QColor(255, 255, 255))
-        painter.setBrush(QColor(255, 255, 255, 150))
+        # Rotate hands based on time
+        timestamp = datetime.datetime.now().timestamp()
+        time = timestamp % 86400
 
-        minuteAngle = math.pi * 2 * (now.minute / 60 + now.second / 3600)
-        minuteAngle = -(math.pi / 2 - minuteAngle)
+        seconds = time % 60
+        minutes = (time % 3600) // 60
+        hours = (time // 3600) % 12
 
-        painter.drawPolygon(
-            [
-                QPointF(
-                    self.centerX + math.cos(minuteAngle) * self.radius * 0.93,
-                    self.centerY + math.sin(minuteAngle) * self.radius * 0.93,
-                ),
-                QPointF(
-                    self.centerX + math.cos(minuteAngle - 0.4) * self.radius * 0.1,
-                    self.centerY + math.sin(minuteAngle - 0.4) * self.radius * 0.1,
-                ),
-                QPointF(
-                    self.centerX + math.cos(minuteAngle + 0.4) * self.radius * 0.1,
-                    self.centerY + math.sin(minuteAngle + 0.4) * self.radius * 0.1,
-                ),
-            ]
-        )
+        angle_second = -math.pi / 2 + (seconds * math.pi / 30)
+        angle_minute = -math.pi / 2 + (minutes * math.pi / 30)
+        angle_hour = -math.pi / 2 + (hours * math.pi / 6)
 
-        hourAngle = math.pi * 2 * ((now.hour % 12 + now.minute / 60) / 12)
-        hourAngle = -(math.pi / 2 - hourAngle)
+        angle_second = (seconds / 60) * 360
+        angle_minute = (minutes / 60) * 360 + angle_second / 60
+        angle_hour = (hours / 12) * 360 + angle_minute / 60
 
-        painter.drawPolygon(
-            [
-                QPointF(
-                    self.centerX + math.cos(hourAngle) * self.radius * 0.6,
-                    self.centerY + math.sin(hourAngle) * self.radius * 0.6,
-                ),
-                QPointF(
-                    self.centerX + math.cos(hourAngle - 0.3) * self.radius * 0.1,
-                    self.centerY + math.sin(hourAngle - 0.3) * self.radius * 0.1,
-                ),
-                QPointF(
-                    self.centerX + math.cos(hourAngle + 0.3) * self.radius * 0.1,
-                    self.centerY + math.sin(hourAngle + 0.3) * self.radius * 0.1,
-                ),
-            ]
-        )
+        self.__draw_rotated_hand(self.hand_second, painter, angle_second)
+        self.__draw_rotated_hand(self.hand_minute, painter, angle_minute)
+        self.__draw_rotated_hand(self.hand_hour, painter, angle_hour)
 
         painter.end()
