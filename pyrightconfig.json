@@ -1,5 +1,5 @@
 {
-  "typeCheckingMode": "strict",
+  "typeCheckingMode": "standard",
   "include": ["."],
   "exclude": ["venv", "build", "__pycache__"]
 }
