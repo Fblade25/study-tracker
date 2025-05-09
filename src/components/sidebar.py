@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QPushButton, QVBoxLayout, QWidget
 class Sidebar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("Sidebar")
 
         # Sidebar layout and widget
         self.setLayout(QVBoxLayout(self))
@@ -38,12 +39,13 @@ class Sidebar(QWidget):
         self.layout().addWidget(self.button_study)
         self.layout().addWidget(self.button_statistics)
 
-    def set_button_style(self, button: QPushButton):
+    def set_button_style(self, button: QPushButton) -> None:
+        """Sets button size."""
         button.setMinimumHeight(50)
         button.setMaximumHeight(50)
 
-    def toggle_sidebar(self):
-        # Toggle the visibility of the sidebar by shrinking/expanding it
+    def toggle_sidebar(self) -> None:
+        """Expands or closes sidebar."""
         if self.width() > 50:  # If the sidebar is expanded
             self.setFixedWidth(50)  # Collapse to a narrow width
         else:

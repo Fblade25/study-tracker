@@ -2,7 +2,7 @@
 
 # Define a central color palette for the app
 class Colors:
-    PRIMARY = "#6a4c9c"
+    PRIMARY = "#3c2c5a"
     SECONDARY = "#a6c1e1"
     ACCENT = "#4e73df"
     BACKGROUND = "#2f2f2f"
