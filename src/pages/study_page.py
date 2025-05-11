@@ -24,8 +24,8 @@ class StudyPage(QWidget):
         self.timer_button = QPushButton("Start")
         layout.addWidget(self.timer_button)
 
-        clock = Clock(self)
-        layout.addWidget(clock)
+        self.clock: Clock = Clock(self)
+        layout.addWidget(self.clock)
 
         # Connect events
         self.timer_button.clicked.connect(self.timer_button_event)
@@ -42,12 +42,14 @@ class StudyPage(QWidget):
 
     def timer_button_event(self, event) -> None:
         """Start/stop timer and change text of button."""
-        if self.is_timing:
+        if self.is_timing:  # Stop timer
             self.__timer.stop()
             self.timer_button.setText("Start")
             self.is_timing = False
-        else:
+            self.clock.reset_times()
+        else:  # Start timer
             self.__timer.start(1000 * 60)  # Every minute
             self.start_time = datetime.datetime.now()
             self.timer_button.setText("Stop")
             self.is_timing = True
+            self.clock.set_start_time(self.start_time)

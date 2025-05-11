@@ -22,9 +22,21 @@ class Clock(QWidget):
         self.__timer.start(1000 / 144)
 
         self.background = None
+        self.foreground = None
+        # Current clock hand
         self.hand_second = None
         self.hand_minute = None
         self.hand_hour = None
+        # Start clock hand
+        self.start_time = None
+        self.hand_second_start = None
+        self.hand_minute_start = None
+        self.hand_hour_start = None
+        # End clock hand
+        self.stop_time = None
+        self.hand_second_stop = None
+        self.hand_minute_stop = None
+        self.hand_hour_stop = None
         self.resizeEvent(None)
 
         self.radius = 0.95 * (min(self.width(), self.height()) / 2)
@@ -118,30 +130,59 @@ class Clock(QWidget):
                         self.centerY + math.sin(angle) * self.radius * 0.925,
                     ),
                 )
-        r = self.radius * 0.035
+        painter.end()
+        return background
 
-        # Middle circle
+    def __create_foreground(self) -> QPixmap:
+        """Returns QPixmap as foreground."""
+        foreground = QPixmap(self.size())
+        foreground.fill(Qt.transparent)
+
+        painter = QPainter(foreground)
+        painter.setBrush(Colors.TEXT)
+        painter.setOpacity(1.0)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        r = self.radius * 0.035
         painter.drawEllipse(
             QPoint(self.centerX, self.centerY),
             r,
             r,
         )
-        painter.end()
-        return background
+        return foreground
 
     def __calculate_clock_hand_angles(
-        self, seconds: float, minutes: int, hours: int
+        self, time: datetime.datetime
     ) -> tuple[float, float, float]:
         """Returns clock hand angles based on time."""
+        seconds = time.second + time.microsecond / 1000000
+        minutes = time.minute
+        hours = time.hour
+
         angle_second = (seconds / 60) * 360
         angle_minute = (minutes / 60) * 360 + angle_second / 60
         angle_hour = (hours / 12) * 360 + angle_minute / 60
 
         return angle_second, angle_minute, angle_hour
 
+    def set_start_time(self, time: datetime.datetime):
+        """Set start time."""
+        self.start_time = time
+
+    def set_stop_time(self, time: datetime.datetime):
+        """Set stop time."""
+        self.stop_time = time
+
+    def reset_times(self):
+        """Clears time."""
+        self.start_time = None
+        self.stop_time = None
+
     def resizeEvent(self, event):
         """Resize items."""
         self.background = self.__create_background()
+        self.foreground = self.__create_foreground()
+        # Current time hands
         self.hand_second = self.__create_clock_hand(
             self.radius * 0.90, self.radius * 0.005
         )
@@ -149,6 +190,26 @@ class Clock(QWidget):
             self.radius * 0.70, self.radius * 0.010
         )
         self.hand_hour = self.__create_clock_hand(
+            self.radius * 0.45, self.radius * 0.020
+        )
+        # Start time hands
+        self.hand_second_start = self.__create_clock_hand(
+            self.radius * 0.90, self.radius * 0.005
+        )
+        self.hand_minute_start = self.__create_clock_hand(
+            self.radius * 0.70, self.radius * 0.010
+        )
+        self.hand_hour_start = self.__create_clock_hand(
+            self.radius * 0.45, self.radius * 0.020
+        )
+        # End time hands
+        self.hand_second_stop = self.__create_clock_hand(
+            self.radius * 0.90, self.radius * 0.005
+        )
+        self.hand_minute_stop = self.__create_clock_hand(
+            self.radius * 0.70, self.radius * 0.010
+        )
+        self.hand_hour_stop = self.__create_clock_hand(
             self.radius * 0.45, self.radius * 0.020
         )
         super().resizeEvent(event)
@@ -161,21 +222,45 @@ class Clock(QWidget):
         painter.setBrush(Colors.TEXT)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.drawPixmap(0, 0, self.background)
+        painter.setOpacity(0.6)
 
-        painter.setOpacity(0.8)
-        # Rotate hands based on time
+        # Start clock hands
+        if self.start_time is not None:
+            painter.setBrush("red")
+            angle_second_start, angle_minute_start, angle_hour_start = (
+                self.__calculate_clock_hand_angles(self.start_time)
+            )
+            self.__draw_rotated_hand(
+                self.hand_second_start, painter, angle_second_start
+            )
+            self.__draw_rotated_hand(
+                self.hand_minute_start, painter, angle_minute_start
+            )
+            self.__draw_rotated_hand(self.hand_hour_start, painter, angle_hour_start)
+
+        # End clock hands
+        if self.stop_time is not None:
+            painter.setBrush("blue")
+            angle_second_stop, angle_minute_stop, angle_hour_stop = (
+                self.__calculate_clock_hand_angles(self.stop_time)
+            )
+            self.__draw_rotated_hand(self.hand_second_stop, painter, angle_second_stop)
+            self.__draw_rotated_hand(self.hand_minute_stop, painter, angle_minute_stop)
+            self.__draw_rotated_hand(self.hand_hour_stop, painter, angle_hour_stop)
+
+        # Current clock hands
         now = datetime.datetime.now()
 
-        seconds = now.second + now.microsecond / 1000000
-        minutes = now.minute
-        hours = now.hour
+        painter.setBrush(Colors.TEXT)
+        painter.setOpacity(0.9)
 
-        angle_second, angle_minute, angle_hour = self.__calculate_clock_hand_angles(
-            seconds, minutes, hours
-        )
+        angle_second, angle_minute, angle_hour = self.__calculate_clock_hand_angles(now)
 
         self.__draw_rotated_hand(self.hand_second, painter, angle_second)
         self.__draw_rotated_hand(self.hand_minute, painter, angle_minute)
         self.__draw_rotated_hand(self.hand_hour, painter, angle_hour)
 
+        # Draw foreground
+        painter.setOpacity(1.0)
+        painter.drawPixmap(0, 0, self.foreground)
         painter.end()
