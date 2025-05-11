@@ -1,7 +1,6 @@
 import datetime
 import math
 
-import tzlocal
 from PySide6.QtCore import QPoint, QPointF, Qt, QTimer
 from PySide6.QtGui import (
     QPainter,
@@ -11,6 +10,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QWidget
 from styles.colors import Colors
+from util.util import calculate_clock_hand_angles
 
 
 class Clock(QWidget):
@@ -159,16 +159,15 @@ class Clock(QWidget):
             self.hand_hour = self.__generate_clock_hand(self.radius * 0.40)
 
         # Rotate hands based on time
-        timezone = tzlocal.get_localzone()
-        now = datetime.datetime.now(timezone)
+        now = datetime.datetime.now()
 
         seconds = now.second + now.microsecond / 1000000
         minutes = now.minute
         hours = now.hour
 
-        angle_second = (seconds / 60) * 360
-        angle_minute = (minutes / 60) * 360 + angle_second / 60
-        angle_hour = (hours / 12) * 360 + angle_minute / 60
+        angle_second, angle_minute, angle_hour = calculate_clock_hand_angles(
+            seconds, minutes, hours
+        )
 
         self.__draw_rotated_hand(self.hand_second, painter, angle_second)
         self.__draw_rotated_hand(self.hand_minute, painter, angle_minute)
