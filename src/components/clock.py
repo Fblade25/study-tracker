@@ -1,11 +1,12 @@
 import datetime
 import math
 
-from PySide6.QtCore import QPoint, QPointF, Qt, QTimer
+from PySide6.QtCore import QPoint, QPointF, QRectF, Qt, QTimer
 from PySide6.QtGui import (
     QPainter,
     QPainterPath,
     QPaintEvent,
+    QPen,
     QPixmap,
 )
 from PySide6.QtWidgets import QWidget
@@ -21,6 +22,12 @@ class Clock(QWidget):
         self.__timer.timeout.connect(self.repaint)
         self.__timer.start(1000 / 144)
 
+        # Constants
+        self.hand_second_length = 0.90
+        self.hand_minute_length = 0.70
+        self.hand_hour_length = 0.45
+
+        # Layers
         self.background = None
         self.foreground = None
         # Current clock hand
@@ -43,6 +50,16 @@ class Clock(QWidget):
 
         self.centerX = int(self.width() / 2)
         self.centerY = int(self.height() / 2)
+
+        # Create pens
+        self.pen_text = QPen(Colors.TEXT)
+        self.pen_text.setWidth(2)
+        self.pen_border = QPen("black")
+        self.pen_border.setWidth(1)
+        self.pen_red = QPen("red")
+        self.pen_red.setWidth(3)
+        self.pen_blue = QPen("blue")
+        self.pen_blue.setWidth(3)
 
     def __create_clock_hand(self, length: float, width: float) -> QPainterPath:
         """Returns a QPainterPath representing a clock hand."""
@@ -165,6 +182,40 @@ class Clock(QWidget):
 
         return angle_second, angle_minute, angle_hour
 
+    def __draw_arc(
+        self,
+        painter: QPainter,
+        length: float,
+        start_angle: float,
+        end_angle: float,
+        text: str,
+    ) -> None:
+        """Paints an arc with text."""
+        rect = QRectF(
+            self.centerX - length,
+            self.centerY - length,
+            length * 2,
+            length * 2,
+        )
+        # Normalize and adjust
+        start_angle -= 90
+        end_angle -= 90
+        span_angle = (end_angle - start_angle) % 360
+        mid_angle = (start_angle + span_angle / 2) % 360
+        mid_angle_rad = math.radians(mid_angle)
+
+        # Draw arc
+        painter.drawArc(rect, int(-start_angle * 16), int(-span_angle * 16))
+
+        # Position text
+        text_radius = length * 0.85
+        text_x = self.centerX + math.cos(mid_angle_rad) * text_radius
+        text_y = self.centerY + math.sin(mid_angle_rad) * text_radius
+        text_rect = QRectF(text_x - 50, text_y - 10, 100, 20)
+
+        # Draw text
+        painter.drawText(text_rect, Qt.AlignCenter, text)
+
     def set_start_time(self, time: datetime.datetime):
         """Set start time."""
         self.start_time = time
@@ -184,33 +235,33 @@ class Clock(QWidget):
         self.foreground = self.__create_foreground()
         # Current time hands
         self.hand_second = self.__create_clock_hand(
-            self.radius * 0.90, self.radius * 0.005
+            self.radius * self.hand_second_length, self.radius * 0.005
         )
         self.hand_minute = self.__create_clock_hand(
-            self.radius * 0.70, self.radius * 0.010
+            self.radius * self.hand_minute_length, self.radius * 0.010
         )
         self.hand_hour = self.__create_clock_hand(
-            self.radius * 0.45, self.radius * 0.020
+            self.radius * self.hand_hour_length, self.radius * 0.020
         )
         # Start time hands
         self.hand_second_start = self.__create_clock_hand(
-            self.radius * 0.90, self.radius * 0.005
+            self.radius * self.hand_second_length, self.radius * 0.005
         )
         self.hand_minute_start = self.__create_clock_hand(
-            self.radius * 0.70, self.radius * 0.010
+            self.radius * self.hand_minute_length, self.radius * 0.010
         )
         self.hand_hour_start = self.__create_clock_hand(
-            self.radius * 0.45, self.radius * 0.020
+            self.radius * self.hand_hour_length, self.radius * 0.020
         )
         # End time hands
         self.hand_second_stop = self.__create_clock_hand(
-            self.radius * 0.90, self.radius * 0.005
+            self.radius * self.hand_second_length, self.radius * 0.005
         )
         self.hand_minute_stop = self.__create_clock_hand(
-            self.radius * 0.70, self.radius * 0.010
+            self.radius * self.hand_minute_length, self.radius * 0.010
         )
         self.hand_hour_stop = self.__create_clock_hand(
-            self.radius * 0.45, self.radius * 0.020
+            self.radius * self.hand_hour_length, self.radius * 0.020
         )
         super().resizeEvent(event)
 
@@ -224,9 +275,13 @@ class Clock(QWidget):
         painter.drawPixmap(0, 0, self.background)
         painter.setOpacity(0.6)
 
+        now = datetime.datetime.now()
+        angle_second, angle_minute, angle_hour = self.__calculate_clock_hand_angles(now)
+
         # Start clock hands
         if self.start_time is not None:
             painter.setBrush("red")
+
             angle_second_start, angle_minute_start, angle_hour_start = (
                 self.__calculate_clock_hand_angles(self.start_time)
             )
@@ -238,6 +293,35 @@ class Clock(QWidget):
             )
             self.__draw_rotated_hand(self.hand_hour_start, painter, angle_hour_start)
 
+            # Draw arc
+            painter.setPen(self.pen_red)
+            delta = now - self.start_time
+            second = int(round(delta.total_seconds() % 60, 0))
+            minute = int(delta.total_seconds() // 60)
+            hour = int(delta.total_seconds() // 3600)
+            self.__draw_arc(
+                painter,
+                self.radius * self.hand_second_length,
+                angle_second_start,
+                angle_second,
+                str(second),
+            )
+            self.__draw_arc(
+                painter,
+                self.radius * self.hand_minute_length,
+                angle_minute_start,
+                angle_minute,
+                str(minute),
+            )
+            self.__draw_arc(
+                painter,
+                self.radius * self.hand_hour_length,
+                angle_hour_start,
+                angle_hour,
+                str(hour),
+            )
+            painter.setPen(self.pen_border)
+
         # End clock hands
         if self.stop_time is not None:
             painter.setBrush("blue")
@@ -248,13 +332,14 @@ class Clock(QWidget):
             self.__draw_rotated_hand(self.hand_minute_stop, painter, angle_minute_stop)
             self.__draw_rotated_hand(self.hand_hour_stop, painter, angle_hour_stop)
 
+            # Draw arc
+            painter.setPen(self.pen_blue)
+            painter.setPen(self.pen_border)
+
         # Current clock hands
-        now = datetime.datetime.now()
-
         painter.setBrush(Colors.TEXT)
+        painter.setPen(self.pen_border)
         painter.setOpacity(0.9)
-
-        angle_second, angle_minute, angle_hour = self.__calculate_clock_hand_angles(now)
 
         self.__draw_rotated_hand(self.hand_second, painter, angle_second)
         self.__draw_rotated_hand(self.hand_minute, painter, angle_minute)
