@@ -61,6 +61,7 @@ class Clock(QWidget):
         background.fill(Qt.transparent)
 
         painter = QPainter(background)
+        painter.setOpacity(1.0)
         painter.setRenderHint(QPainter.Antialiasing)
 
         # Background circle
@@ -159,9 +160,9 @@ class Clock(QWidget):
         painter = QPainter(self)
         painter.setBrush(Colors.TEXT)
         painter.setRenderHint(QPainter.Antialiasing)
-
         painter.drawPixmap(0, 0, self.background)
 
+        painter.setOpacity(0.8)
         # Rotate hands based on time
         now = datetime.datetime.now()
 

@@ -3,6 +3,7 @@ name = "study-tracker"
 version = "0.1.0"
 description = "A study tracking tool"
 dependencies = [
+    "polars>=1.29.0",
     "pyside6>=6.9.0",
 ]
 
