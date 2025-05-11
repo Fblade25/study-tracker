@@ -40,7 +40,7 @@ class StudyPage(QWidget):
             self.timer_button.setText("Start")
             self.is_timing = False
         else:
-            self.__timer.start(1000)  # Every minute
+            self.__timer.start(1000 * 60)  # Every minute
             self.start_time = datetime.datetime.now()
             self.timer_button.setText("Stop")
             self.is_timing = True
