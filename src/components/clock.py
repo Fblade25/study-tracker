@@ -32,14 +32,15 @@ class Clock(QWidget):
         self.centerX = int(self.width() / 2)
         self.centerY = int(self.height() / 2)
 
-    def __generate_clock_hand(self, length) -> QPainterPath:
+    def __create_clock_hand(self, length: float, width: float) -> QPainterPath:
         """Returns a QPainterPath representing a clock hand."""
         path = QPainterPath()
 
         # Create a triangular hand pointing upwards
-        path.moveTo(0, -length)
-        path.lineTo(-4, 8)
-        path.lineTo(4, 8)
+        path.moveTo(-width, -length)
+        path.lineTo(width, -length)
+        path.lineTo(width, 0)
+        path.lineTo(-width, 0)
         path.closeSubpath()
 
         return path
@@ -54,7 +55,7 @@ class Clock(QWidget):
         painter.drawPath(hand)
         painter.restore()
 
-    def __generate_background(self) -> QPixmap:
+    def __create_background(self) -> QPixmap:
         """Returns QPixmap as background."""
         background = QPixmap(self.size())
         background.fill(Qt.transparent)
@@ -116,7 +117,7 @@ class Clock(QWidget):
                         self.centerY + math.sin(angle) * self.radius * 0.925,
                     ),
                 )
-        r = self.radius * 0.065
+        r = self.radius * 0.035
 
         # Middle circle
         painter.drawEllipse(
@@ -139,10 +140,16 @@ class Clock(QWidget):
 
     def resizeEvent(self, event):
         """Resize items."""
-        self.background = self.__generate_background()
-        self.hand_second = self.__generate_clock_hand(self.radius * 0.95)
-        self.hand_minute = self.__generate_clock_hand(self.radius * 0.80)
-        self.hand_hour = self.__generate_clock_hand(self.radius * 0.40)
+        self.background = self.__create_background()
+        self.hand_second = self.__create_clock_hand(
+            self.radius * 0.90, self.radius * 0.005
+        )
+        self.hand_minute = self.__create_clock_hand(
+            self.radius * 0.70, self.radius * 0.010
+        )
+        self.hand_hour = self.__create_clock_hand(
+            self.radius * 0.45, self.radius * 0.020
+        )
         super().resizeEvent(event)
 
     def paintEvent(self, event: QPaintEvent) -> None:
@@ -153,19 +160,7 @@ class Clock(QWidget):
         painter.setBrush(Colors.TEXT)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        # Check if all elements exist
-        if self.background is None:
-            self.background = self.__generate_background()
         painter.drawPixmap(0, 0, self.background)
-
-        if self.hand_second is None:
-            self.hand_second = self.__generate_clock_hand(self.radius * 0.95)
-
-        if self.hand_minute is None:
-            self.hand_minute = self.__generate_clock_hand(self.radius * 0.75)
-
-        if self.hand_hour is None:
-            self.hand_hour = self.__generate_clock_hand(self.radius * 0.40)
 
         # Rotate hands based on time
         now = datetime.datetime.now()
