@@ -10,7 +10,6 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QWidget
 from styles.colors import Colors
-from util.util import calculate_clock_hand_angles
 
 
 class Clock(QWidget):
@@ -128,6 +127,16 @@ class Clock(QWidget):
         painter.end()
         return background
 
+    def __calculate_clock_hand_angles(
+        self, seconds: float, minutes: int, hours: int
+    ) -> tuple[float, float, float]:
+        """Returns clock hand angles based on time."""
+        angle_second = (seconds / 60) * 360
+        angle_minute = (minutes / 60) * 360 + angle_second / 60
+        angle_hour = (hours / 12) * 360 + angle_minute / 60
+
+        return angle_second, angle_minute, angle_hour
+
     def resizeEvent(self, event):
         """Resize items."""
         self.background = self.__generate_background()
@@ -165,7 +174,7 @@ class Clock(QWidget):
         minutes = now.minute
         hours = now.hour
 
-        angle_second, angle_minute, angle_hour = calculate_clock_hand_angles(
+        angle_second, angle_minute, angle_hour = self.__calculate_clock_hand_angles(
             seconds, minutes, hours
         )
 
