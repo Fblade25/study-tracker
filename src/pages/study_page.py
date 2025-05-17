@@ -1,6 +1,4 @@
 import datetime
-import os
-import pathlib
 
 import polars
 from components.clock import Clock
@@ -16,8 +14,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from util.constants import DATA_DIR, DATA_FILE
+from util.constants import DATA_FILE
 from util.schemas import study_time_schema
+from util.util import get_data_path
 
 
 class StudyPage(QWidget):
@@ -64,7 +63,7 @@ class StudyPage(QWidget):
     def load_subjects_in_dropdown(self) -> None:
         """Reloads subjects in the dropdown menu."""
         parquet_files = [
-            file for file in os.listdir(DATA_DIR) if file.endswith(".parquet")
+            file.name for file in get_data_path().iterdir() if file.suffix == ".parquet"
         ]
         self.subject_dropdown.clear()
 
@@ -84,7 +83,7 @@ class StudyPage(QWidget):
 
     def save_subject(self, subject_name: str) -> None:
         """Adds new .parquet file to data folder."""
-        path = pathlib.Path(DATA_DIR + DATA_FILE.format(subject_name=subject_name))
+        path = get_data_path() / DATA_FILE.format(subject_name=subject_name)
 
         if not path.exists():
             # Create empty DataFrame
@@ -127,9 +126,7 @@ class StudyPage(QWidget):
 
     def save_data(self, datetime: datetime.datetime, seconds: int) -> None:
         """Saves study data into parquet file."""
-        path = pathlib.Path(
-            DATA_DIR + DATA_FILE.format(subject_name=self.current_subject)
-        )
+        path = get_data_path() / DATA_FILE.format(subject_name=self.current_subject)
 
         # Open DataFrame
         df = polars.read_parquet(path)
