@@ -164,7 +164,7 @@ class Clock(QWidget):
         painter.setOpacity(1.0)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        r = self.radius * 0.035
+        r = self.radius * 0.050
         painter.drawEllipse(
             QPoint(self.centerX, self.centerY),
             r,
@@ -239,33 +239,33 @@ class Clock(QWidget):
         self.foreground = self.__create_foreground()
         # Current time hands
         self.hand_second = self.__create_clock_hand(
-            self.radius * self.hand_second_length, self.radius * 0.005
+            self.radius * self.hand_second_length, self.radius * 0.025
         )
         self.hand_minute = self.__create_clock_hand(
-            self.radius * self.hand_minute_length, self.radius * 0.010
+            self.radius * self.hand_minute_length, self.radius * 0.035
         )
         self.hand_hour = self.__create_clock_hand(
-            self.radius * self.hand_hour_length, self.radius * 0.020
+            self.radius * self.hand_hour_length, self.radius * 0.045
         )
         # Start time hands
         self.hand_second_start = self.__create_clock_hand(
-            self.radius * self.hand_second_length, self.radius * 0.005
+            self.radius * self.hand_second_length, self.radius * 0.025
         )
         self.hand_minute_start = self.__create_clock_hand(
-            self.radius * self.hand_minute_length, self.radius * 0.010
+            self.radius * self.hand_minute_length, self.radius * 0.035
         )
         self.hand_hour_start = self.__create_clock_hand(
-            self.radius * self.hand_hour_length, self.radius * 0.020
+            self.radius * self.hand_hour_length, self.radius * 0.045
         )
         # End time hands
         self.hand_second_stop = self.__create_clock_hand(
-            self.radius * self.hand_second_length, self.radius * 0.005
+            self.radius * self.hand_second_length, self.radius * 0.025
         )
         self.hand_minute_stop = self.__create_clock_hand(
-            self.radius * self.hand_minute_length, self.radius * 0.010
+            self.radius * self.hand_minute_length, self.radius * 0.035
         )
         self.hand_hour_stop = self.__create_clock_hand(
-            self.radius * self.hand_hour_length, self.radius * 0.020
+            self.radius * self.hand_hour_length, self.radius * 0.045
         )
         super().resizeEvent(event)
 
