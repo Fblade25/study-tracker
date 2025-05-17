@@ -42,11 +42,11 @@ class StudyPage(QWidget):
         self.subject_dropdown = QComboBox()
         self.load_subjects_in_dropdown()
 
-        add_subject_button = QPushButton("Add subject")
-        add_subject_button.clicked.connect(self.add_subject_form)
+        self.add_subject_button = QPushButton("Add subject")
+        self.add_subject_button.clicked.connect(self.add_subject_form)
 
         subject_layout.addWidget(self.subject_dropdown)
-        subject_layout.addWidget(add_subject_button)
+        subject_layout.addWidget(self.add_subject_button)
 
         # Vertical layout
         layout.addLayout(subject_layout)
@@ -100,7 +100,7 @@ class StudyPage(QWidget):
         """Opens form to add subject."""
         dialog = QDialog(self)
         dialog.setWindowTitle("Add subject")
-        dialog.setMaximumWidth(300)
+        dialog.setFixedWidth(300)
 
         layout = QVBoxLayout(dialog)
         form_layout = QFormLayout()
@@ -176,9 +176,16 @@ class StudyPage(QWidget):
             self.timer_button.setText("Start")
             self.is_timing = False
             self.clock.reset_times()
+            # Enable features
+            self.subject_dropdown.setEnabled(True)
+            self.add_subject_button.setEnabled(True)
+
         else:  # Start timer
             self.__timer.start(1000)  # Every second
             self.start_time = datetime.datetime.now()
             self.timer_button.setText("Stop")
             self.is_timing = True
             self.clock.set_start_time(self.start_time)
+            # Disable features
+            self.subject_dropdown.setDisabled(True)
+            self.add_subject_button.setDisabled(True)
