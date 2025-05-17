@@ -2,9 +2,9 @@ import datetime
 
 import polars
 from components.clock import Clock
+from components.dropdown import SubjectDropdown
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
-    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -36,11 +36,14 @@ class StudyPage(QWidget):
 
         layout = QVBoxLayout(self)
 
-        # Add subject functionality
+        # Subjects
         subject_layout = QHBoxLayout()
 
-        self.subject_dropdown = QComboBox()
-        self.load_subjects_in_dropdown()
+        if not any(get_data_path().iterdir()):  # Create blank subject if there is none
+            self.save_subject("General")
+
+        self.subject_dropdown = SubjectDropdown()
+        self.subject_dropdown.load_subjects_in_dropdown()
 
         self.add_subject_button = QPushButton("Add subject")
         self.add_subject_button.clicked.connect(self.add_subject_form)
@@ -60,27 +63,6 @@ class StudyPage(QWidget):
         # Connect events
         self.timer_button.clicked.connect(self.timer_button_event)
 
-    def load_subjects_in_dropdown(self) -> None:
-        """Reloads subjects in the dropdown menu."""
-        parquet_files = [
-            file.name for file in get_data_path().iterdir() if file.suffix == ".parquet"
-        ]
-        self.subject_dropdown.clear()
-
-        # Make general subject if there is none
-        if len(parquet_files) == 0:
-            self.save_subject("General")
-
-        # Load each subject
-        for file_name in parquet_files:
-            subject_name = file_name.replace(".parquet", "")
-            self.subject_dropdown.addItem(subject_name)
-
-        # Preselect subject
-        index = self.subject_dropdown.findText(self.current_subject)
-        if index != -1:
-            self.subject_dropdown.setCurrentIndex(index)
-
     def save_subject(self, subject_name: str) -> None:
         """Adds new .parquet file to data folder."""
         path = get_data_path() / DATA_FILE.format(subject_name=subject_name)
@@ -94,7 +76,7 @@ class StudyPage(QWidget):
 
             # Reload drop down
             self.current_subject = subject_name
-            self.load_subjects_in_dropdown()
+            self.subject_dropdown.load_subjects_in_dropdown(subject_name)
 
     def add_subject_form(self, event) -> None:
         """Opens form to add subject."""
