@@ -22,3 +22,7 @@ class SubjectDropdown(QComboBox):
         index = self.findText(subject)
         if index != -1:
             self.setCurrentIndex(index)
+
+    def get_current_subject(self) -> str:
+        """Gets the current subject."""
+        return self.currentText()

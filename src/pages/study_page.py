@@ -32,7 +32,6 @@ class StudyPage(QWidget):
         self.stop_time = datetime.datetime.now()
         self.minutes = 0
         self.hours = 0
-        self.current_subject = "General"
 
         layout = QVBoxLayout(self)
 
@@ -74,8 +73,7 @@ class StudyPage(QWidget):
             # Save DataFrame
             df.write_parquet(path)
 
-            # Reload drop down
-            self.current_subject = subject_name
+            # Reload dropdown
             self.subject_dropdown.load_subjects_in_dropdown(subject_name)
 
     def add_subject_form(self, event) -> None:
@@ -108,7 +106,9 @@ class StudyPage(QWidget):
 
     def save_data(self, datetime: datetime.datetime, seconds: int) -> None:
         """Saves study data into parquet file."""
-        path = get_data_path() / DATA_FILE.format(subject_name=self.current_subject)
+        path = get_data_path() / DATA_FILE.format(
+            subject_name=self.subject_dropdown.get_current_subject()
+        )
 
         # Open DataFrame
         df = polars.read_parquet(path)

@@ -1,4 +1,5 @@
-from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
+from components.dropdown import SubjectDropdown
+from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 
 class StatisticsPage(QWidget):
@@ -6,4 +7,7 @@ class StatisticsPage(QWidget):
         super().__init__()
 
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("Welcome to the Statistics page!"))
+
+        self.subject_dropdown = SubjectDropdown()
+        self.subject_dropdown.load_subjects_in_dropdown()
+        layout.addWidget(self.subject_dropdown)
