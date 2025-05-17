@@ -285,14 +285,13 @@ class Clock(QWidget):
             angle_second_start, angle_minute_start, angle_hour_start = (
                 self.__calculate_clock_hand_angles(self.start_time)
             )
-            self.__draw_rotated_hand(
-                self.hand_second_start, painter, angle_second_start
-            )
+            self.__draw_rotated_hand(self.hand_hour_start, painter, angle_hour_start)
             self.__draw_rotated_hand(
                 self.hand_minute_start, painter, angle_minute_start
             )
-            self.__draw_rotated_hand(self.hand_hour_start, painter, angle_hour_start)
-
+            self.__draw_rotated_hand(
+                self.hand_second_start, painter, angle_second_start
+            )
             # Draw arc
             painter.setPen(self.pen_red)
             delta = now - self.start_time
@@ -328,10 +327,9 @@ class Clock(QWidget):
             angle_second_stop, angle_minute_stop, angle_hour_stop = (
                 self.__calculate_clock_hand_angles(self.stop_time)
             )
-            self.__draw_rotated_hand(self.hand_second_stop, painter, angle_second_stop)
-            self.__draw_rotated_hand(self.hand_minute_stop, painter, angle_minute_stop)
             self.__draw_rotated_hand(self.hand_hour_stop, painter, angle_hour_stop)
-
+            self.__draw_rotated_hand(self.hand_minute_stop, painter, angle_minute_stop)
+            self.__draw_rotated_hand(self.hand_second_stop, painter, angle_second_stop)
             # Draw arc
             painter.setPen(self.pen_blue)
             painter.setPen(self.pen_border)
@@ -341,9 +339,9 @@ class Clock(QWidget):
         painter.setPen(self.pen_border)
         painter.setOpacity(0.9)
 
-        self.__draw_rotated_hand(self.hand_second, painter, angle_second)
-        self.__draw_rotated_hand(self.hand_minute, painter, angle_minute)
         self.__draw_rotated_hand(self.hand_hour, painter, angle_hour)
+        self.__draw_rotated_hand(self.hand_minute, painter, angle_minute)
+        self.__draw_rotated_hand(self.hand_second, painter, angle_second)
 
         # Draw foreground
         painter.setOpacity(1.0)
