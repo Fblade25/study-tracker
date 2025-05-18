@@ -43,4 +43,8 @@ class MainWindow(QMainWindow):
 
     def switch_page(self, index):
         """Switch pages in the stacked widget"""
+        if index == 2:  # load subjects on statistics page swap
+            self.page_statistics.subject_dropdown.load_subjects_in_dropdown(
+                self.page_statistics.subject_dropdown.get_current_subject()
+            )
         self.stacked_widget.setCurrentIndex(index)
