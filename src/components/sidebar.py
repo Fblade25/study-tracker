@@ -56,9 +56,11 @@ class Sidebar(QWidget):
         if self.width() > 50:
             self.setFixedWidth(50)
             delta = -150
+            main_window.setMinimumWidth(325)
         else:
             self.setFixedWidth(200)
             delta = 150
+            main_window.setMinimumWidth(475)
 
         # Resize window and move
         main_window.resize(width + delta, height)
