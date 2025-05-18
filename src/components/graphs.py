@@ -3,7 +3,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 from styles.colors import Colors
-from util.util import get_date_formatter
+from util.util import set_xaxis_labels
 
 
 class TimeSeriesGraphWidget(QWidget):
@@ -19,9 +19,6 @@ class TimeSeriesGraphWidget(QWidget):
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.canvas)
         self.setLayout(self.layout)
-
-        # Set widget background
-        # self.setAutoFillBackground(True)
 
     def get_colors(self) -> dict[str, str]:
         """Returns a dictionary of theme colors."""
@@ -66,9 +63,8 @@ class TimeSeriesGraphWidget(QWidget):
         ax.tick_params(axis="x", colors=self.colors["text"])
         ax.tick_params(axis="y", colors=self.colors["text"])
 
-        # Format x-axis for dates
-        ax.xaxis.set_major_formatter(get_date_formatter(timestamps))
-        self.figure.autofmt_xdate()
+        # Use custom formatter for x-labels
+        set_xaxis_labels(ax, timestamps)
 
         ax.grid(True, axis="y", color=self.colors["grid"])
         self.canvas.draw()
