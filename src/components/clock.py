@@ -2,13 +2,7 @@ import datetime
 import math
 
 from PySide6.QtCore import QPoint, QPointF, QRectF, Qt, QTimer
-from PySide6.QtGui import (
-    QPainter,
-    QPainterPath,
-    QPaintEvent,
-    QPen,
-    QPixmap,
-)
+from PySide6.QtGui import QFont, QPainter, QPainterPath, QPaintEvent, QPen, QPixmap
 from PySide6.QtWidgets import QWidget
 from styles.colors import Colors
 
@@ -59,6 +53,8 @@ class Clock(QWidget):
         self.pen_text.setWidth(2)
         self.pen_border_white = QPen("white")
         self.pen_border_white.setWidth(1)
+        self.pen_border_black = QPen("black")
+        self.pen_border_black.setWidth(2)
         self.pen_border = QPen("black")
         self.pen_border.setWidth(1)
         self.pen_arc_red = QPen("red")
@@ -195,39 +191,64 @@ class Clock(QWidget):
 
         return angle_second, angle_minute, angle_hour
 
+    def __calculate_span_angles(
+        self, start_angle: float, end_angle: float
+    ) -> tuple[float, float]:
+        """Calculates the span and middle angle between start and end."""
+        start_angle -= 90
+        end_angle -= 90
+        span_angle = (end_angle - start_angle) % 360
+        span_mid_angle = (start_angle + span_angle / 2) % 360
+
+        return span_angle, span_mid_angle
+
     def __draw_arc(
         self,
         painter: QPainter,
         length: float,
         start_angle: float,
-        end_angle: float,
-        text: str,
+        span_angle: float,
     ) -> None:
-        """Paints an arc with text."""
+        """Paints an arc between 2 angles."""
         rect = QRectF(
             self.centerX - length,
             self.centerY - length,
             length * 2,
             length * 2,
         )
-        # Normalize and adjust
-        start_angle -= 90
-        end_angle -= 90
-        span_angle = (end_angle - start_angle) % 360
-        mid_angle = (start_angle + span_angle / 2) % 360
-        mid_angle_rad = math.radians(mid_angle)
+        painter.drawArc(rect, int((-start_angle + 90) * 16), int(-span_angle * 16))
 
-        # Draw arc
-        painter.drawArc(rect, int(-start_angle * 16), int(-span_angle * 16))
+    def __draw_arc_text(
+        self,
+        painter: QPainter,
+        fill_color: str,
+        length: float,
+        mid_angle: float,
+        text: str,
+    ) -> None:
+        """Paints the numeric text on arc."""
+        mid_angle_rad = math.radians(mid_angle)
+        font = QFont("Arial", self.radius // 10)
 
         # Position text
         text_radius = length * 0.90
-        text_x = self.centerX + math.cos(mid_angle_rad) * text_radius
-        text_y = self.centerY + math.sin(mid_angle_rad) * text_radius
-        text_rect = QRectF(text_x - 50, text_y - 10, 100, 20)
+        text_x = (
+            self.centerX + math.cos(mid_angle_rad) * text_radius - text_radius * 0.05
+        )
+        text_y = (
+            self.centerY + math.sin(mid_angle_rad) * text_radius + text_radius * 0.05
+        )
+        path = QPainterPath()
+        path.addText(text_x, text_y, font, text)
 
-        # Draw text
-        painter.drawText(text_rect, Qt.AlignCenter, text)
+        # Outline
+        painter.setPen(self.pen_border_black)
+        painter.drawPath(path)
+
+        # Fill
+        painter.setPen(fill_color)
+        painter.setBrush(fill_color)
+        painter.drawPath(path)
 
     def set_start_time(self, time: datetime.datetime):
         """Set start time."""
@@ -306,31 +327,64 @@ class Clock(QWidget):
             self.__draw_rotated_hand(
                 self.hand_second_start, painter, angle_second_start
             )
-            # Draw arc
+            # Calculate values
             painter.setPen(self.pen_arc_red)
             delta = now - self.start_time
             second = int(round(delta.total_seconds() % 60, 0))
             minute = int(delta.total_seconds() // 60)
             hour = int(delta.total_seconds() // 3600)
+
+            # Calculate span and middle
+            angle_span_second, middle_angle_second = self.__calculate_span_angles(
+                angle_second_start, angle_second
+            )
+            angle_span_minute, middle_angle_minute = self.__calculate_span_angles(
+                angle_minute_start, angle_minute
+            )
+            angle_span_hour, middle_angle_hour = self.__calculate_span_angles(
+                angle_hour_start, angle_hour
+            )
+
+            # Draw arcs
             self.__draw_arc(
                 painter,
                 self.radius * self.hand_second_length,
                 angle_second_start,
-                angle_second,
-                str(second),
+                angle_span_second,
             )
             self.__draw_arc(
                 painter,
                 self.radius * self.hand_minute_length,
                 angle_minute_start,
-                angle_minute,
-                str(minute),
+                angle_span_minute,
             )
             self.__draw_arc(
                 painter,
                 self.radius * self.hand_hour_length,
                 angle_hour_start,
-                angle_hour,
+                angle_span_hour,
+            )
+
+            # Draw text
+            self.__draw_arc_text(
+                painter,
+                "red",
+                self.radius * self.hand_second_length,
+                middle_angle_second,
+                str(second),
+            )
+            self.__draw_arc_text(
+                painter,
+                "red",
+                self.radius * self.hand_minute_length,
+                middle_angle_minute,
+                str(minute),
+            )
+            self.__draw_arc_text(
+                painter,
+                "red",
+                self.radius * self.hand_hour_length,
+                middle_angle_hour,
                 str(hour),
             )
 
