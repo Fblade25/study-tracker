@@ -11,7 +11,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("Study Tracker")
         self.setGeometry(100, 100, 920, 640)
-        self.setMinimumWidth(325)
+        self.setMinimumWidth(475)
 
         # Create sidebar
         self.sidebar = Sidebar(self)
