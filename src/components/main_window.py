@@ -23,6 +23,7 @@ class MainWindow(QMainWindow):
         self.page_home = HomePage()
         self.page_study = StudyPage()
         self.page_statistics = StatisticsPage()
+        self.page_statistics.update_subject_list()
 
         # Add pages to stacked widget
         self.stacked_widget.addWidget(self.page_home)
@@ -43,8 +44,4 @@ class MainWindow(QMainWindow):
 
     def switch_page(self, index):
         """Switch pages in the stacked widget"""
-        if index == 2:  # load subjects on statistics page swap
-            self.page_statistics.subject_dropdown.load_subjects_in_dropdown(
-                self.page_statistics.subject_dropdown.get_current_subject()
-            )
         self.stacked_widget.setCurrentIndex(index)

@@ -75,6 +75,7 @@ class StudyPage(QWidget):
 
             # Reload dropdown
             self.subject_dropdown.load_subjects_in_dropdown(subject_name)
+            self.window().page_statistics.update_subject_list()
 
     def add_subject_form(self, event) -> None:
         """Opens form to add subject."""
@@ -149,6 +150,9 @@ class StudyPage(QWidget):
             # Reset second counter
             self.start_time = datetime.datetime.now()
             self.stop_stop = datetime.datetime.now()
+
+            # Update data on statistics statistics page
+            self.window().page_statistics.update_plots()
 
     def timer_button_event(self, event) -> None:
         """Start/stop timer and change text of button."""
