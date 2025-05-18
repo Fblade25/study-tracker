@@ -1,9 +1,9 @@
-import matplotlib.dates as mdates
 import polars
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 from styles.colors import Colors
+from util.util import get_date_formatter
 
 
 class TimeSeriesGraphWidget(QWidget):
@@ -67,7 +67,7 @@ class TimeSeriesGraphWidget(QWidget):
         ax.tick_params(axis="y", colors=self.colors["text"])
 
         # Format x-axis for dates
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M"))
+        ax.xaxis.set_major_formatter(get_date_formatter(timestamps))
         self.figure.autofmt_xdate()
 
         ax.grid(True, axis="y", color=self.colors["grid"])
