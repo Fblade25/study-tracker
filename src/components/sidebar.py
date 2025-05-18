@@ -46,7 +46,20 @@ class Sidebar(QWidget):
 
     def toggle_sidebar(self) -> None:
         """Expands or closes sidebar."""
-        if self.width() > 50:  # If the sidebar is expanded
-            self.setFixedWidth(50)  # Collapse to a narrow width
+        main_window = self.window()
+        old_pos = main_window.pos()
+        width = main_window.width()
+        height = main_window.height()
+        delta = 0
+
+        # Collapse or expand sidebar
+        if self.width() > 50:
+            self.setFixedWidth(50)
+            delta = -150
         else:
-            self.setFixedWidth(200)  # Expand to full width
+            self.setFixedWidth(200)
+            delta = 150
+
+        # Resize window and move
+        main_window.resize(width + delta, height)
+        main_window.move(old_pos)
