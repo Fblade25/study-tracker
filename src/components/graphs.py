@@ -1,4 +1,5 @@
 import polars
+from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtWidgets import QVBoxLayout, QWidget
@@ -19,6 +20,9 @@ class TimeSeriesGraphWidget(QWidget):
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.canvas)
         self.setLayout(self.layout)
+
+        self._bars = None
+        self._animation = None
 
     def get_colors(self) -> dict[str, str]:
         """Returns a dictionary of theme colors."""
@@ -47,9 +51,12 @@ class TimeSeriesGraphWidget(QWidget):
         timestamps = df["timestamp"].to_list()
         values = df["studied_minutes"].to_list()
 
-        ax.bar(
+        self._timestamps = timestamps
+        self._values = values
+
+        self._bars = ax.bar(
             timestamps,
-            values,
+            [0] * len(values),
             color=self.colors["bar"],
             edgecolor=self.colors["bar_edge"],
             linewidth=0.5,
@@ -60,11 +67,39 @@ class TimeSeriesGraphWidget(QWidget):
         ax.set_xlabel("Timestamp", color=self.colors["text"])
         ax.set_ylabel("Studied Minutes", color=self.colors["text"])
 
+        max_value = max(values) if values else 1
+        ax.set_ylim(0, max_value * 1.1)
+
         ax.tick_params(axis="x", colors=self.colors["text"])
         ax.tick_params(axis="y", colors=self.colors["text"])
 
         # Use custom formatter for x-labels
         set_xaxis_labels(ax, timestamps)
 
+        # Grid color
         ax.grid(True, axis="y", color=self.colors["grid"])
+
+        # Animate
+        self._animation = FuncAnimation(
+            self.figure,
+            self.animate,
+            frames=30,
+            interval=1000 // 60,
+            blit=False,
+            repeat=False,
+        )
+
         self.canvas.draw()
+
+    def ease_in_out_quad(self, frame):
+        if frame < 0.5:
+            return 2 * frame * frame
+        return -1 + (4 - 2 * frame) * frame
+
+    def animate(self, i):
+        frames = 30
+        frame = i / frames
+        eased_t = self.ease_in_out_quad(frame)
+        for bar, value in zip(self._bars, self._values, strict=False):
+            bar.set_height(eased_t * value)
+        return self._bars
