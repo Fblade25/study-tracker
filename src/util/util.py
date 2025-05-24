@@ -76,9 +76,12 @@ def set_xaxis_labels(ax, timestamps):
     max_ticks = 5
     non_midnight_indexes = sorted(set(closest_indexes) - set(midnight_indexes))
 
-    step = max(1, len(non_midnight_indexes) // (max_ticks - len(midnight_indexes)))
-
-    selected_non_midnight = non_midnight_indexes[::step]
+    remaining_slots = max_ticks - len(midnight_indexes)
+    if remaining_slots > 0 and non_midnight_indexes:
+        step = max(1, len(non_midnight_indexes) // (max_ticks - len(midnight_indexes)))
+        selected_non_midnight = non_midnight_indexes[::step]
+    else:
+        selected_non_midnight = []
 
     selected_indexes = sorted(set(midnight_indexes + selected_non_midnight))
 
