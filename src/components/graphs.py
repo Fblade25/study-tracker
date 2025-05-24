@@ -43,8 +43,14 @@ class TimeSeriesGraphWidget(QWidget):
             return bar_width
         return 1.0
 
-    def load_data(self, df: polars.DataFrame, title: str):
+    def reset_values(self):
+        """Resets certain values when changing data source."""
+        self._bars = None
+        self._animation = None
         self.figure.clear()
+
+    def load_data(self, df: polars.DataFrame, title: str):
+        # self.figure.clear()
         ax = self.figure.add_subplot(111, facecolor=self.colors["background"])
 
         # Convert Polars timestamps to matplotlib dates

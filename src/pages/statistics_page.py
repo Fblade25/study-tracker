@@ -16,7 +16,9 @@ class StatisticsPage(QWidget):
 
         self.subject_dropdown = SubjectDropdown()
         self.subject_dropdown.load_subjects_in_dropdown()
-        self.subject_dropdown.currentIndexChanged.connect(self.update_plots)
+        self.subject_dropdown.currentIndexChanged.connect(
+            lambda: self.update_plots(True)
+        )
         self.layout.addWidget(self.subject_dropdown)
 
         self.study_time_graph = TimeSeriesGraphWidget(self)
@@ -51,7 +53,7 @@ class StatisticsPage(QWidget):
             return joined
         return df
 
-    def update_plots(self):
+    def update_plots(self, reset=False):
         """"""
         subject = self.subject_dropdown.get_current_subject()
 
@@ -62,4 +64,6 @@ class StatisticsPage(QWidget):
 
             df_processed = self.preprocess_data(df)
 
+            if reset:
+                self.study_time_graph.reset_values()
             self.study_time_graph.load_data(df_processed, "Study time")
