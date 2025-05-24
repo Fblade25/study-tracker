@@ -111,7 +111,7 @@ class TimeSeriesGraphWidget(QWidget):
             self.animate,
             frames=30,
             interval=1000 // 60,
-            blit=False,
+            blit=True,
             repeat=False,
         )
 
