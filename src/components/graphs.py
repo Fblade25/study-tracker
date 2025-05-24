@@ -41,7 +41,7 @@ class TimeSeriesGraphWidget(QWidget):
     def get_bar_width(self, timestamps: list[polars.Datetime]) -> float:
         """Calculates bar width based on timestamp range."""
         if len(timestamps) > 1:
-            range_days = (timestamps[-1] - timestamps[0]).total_seconds() / 86400
+            range_days = (max(timestamps) - min(timestamps)).total_seconds() / 86400
             spacing = range_days / (len(timestamps) - 1)
             bar_width = spacing * 0.9
             return bar_width
@@ -53,13 +53,36 @@ class TimeSeriesGraphWidget(QWidget):
         self._bars = None
         self._animation = None
         self._values = None
+        self._max_value = None
         self._previous_values = None
+        self._ylim = None
         self.figure.clear()
 
     def load_data(self, df: polars.DataFrame, title: str):
-        # Convert Polars timestamps to matplotlib dates
-        timestamps = df["timestamp"].to_list()
-        values = df["studied_minutes"].to_list()
+        """Loads data for plotting."""
+        max_bars = 50
+        if df.shape[0] > max_bars:
+            df = df.group_by("date").agg(polars.col("studied_hours").sum())
+            df = df.with_columns(
+                polars.col("date").cast(polars.Datetime).alias("timestamp")
+            )
+
+            ylabel = "Studied Hours"
+            values = df.sort("timestamp")["studied_hours"].to_list()
+        else:
+            ylabel = "Studied Minutes"
+            values = df.sort("timestamp")["studied_minutes"].to_list()
+
+        timestamps = df.sort("timestamp")["timestamp"].to_list()
+        self._max_value = max(values) if values else 1
+
+        self._timestamps = timestamps
+        self._values = values
+
+        ylim_changed = False
+        if self._ylim is None or self._ylim * 0.9 < self._max_value:
+            self._ylim = max(self._max_value * 1.1, 1)
+            ylim_changed = True
 
         if self._ax is None:
             self._ax = self.figure.add_subplot(111, facecolor=self.colors["background"])
@@ -67,11 +90,11 @@ class TimeSeriesGraphWidget(QWidget):
             # Labels
             self._ax.set_title(title, color=self.colors["text"])
             self._ax.set_xlabel("Timestamp", color=self.colors["text"])
-            self._ax.set_ylabel("Studied Minutes", color=self.colors["text"])
+
+            self._ax.set_ylabel(ylabel, color=self.colors["text"])
 
             # Scope
-            max_value = max(values) if values else 1
-            self._ax.set_ylim(0, max_value * 1.1)
+            self._ax.set_ylim(0, self._ylim)
 
             # Ticks
             self._ax.tick_params(axis="x", colors=self.colors["text"])
@@ -83,6 +106,10 @@ class TimeSeriesGraphWidget(QWidget):
             # Use custom formatter for x-labels
             set_xaxis_labels(self._ax, timestamps)
 
+        if ylim_changed:
+            self._ax.set_ylim(0, self._ylim)
+            self.canvas.draw()
+
         if self._previous_values is None:
             self._previous_values = [0] * len(values)
         else:
@@ -92,9 +119,6 @@ class TimeSeriesGraphWidget(QWidget):
                 self._previous_values = self._previous_values + [0] * (
                     len(self._values) - len(self._previous_values)
                 )
-
-        self._timestamps = timestamps
-        self._values = values
 
         self._bars = self._ax.bar(
             timestamps,
@@ -130,5 +154,6 @@ class TimeSeriesGraphWidget(QWidget):
             self._bars, self._values, self._previous_values, strict=False
         ):
             delta = value - previous_value
-            bar.set_height(eased_t * delta + previous_value)
+            height = eased_t * delta + previous_value
+            bar.set_height(height)
         return self._bars

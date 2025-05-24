@@ -31,9 +31,14 @@ class StatisticsPage(QWidget):
 
     def preprocess_data(self, df: polars.DataFrame):
         """Preprocesses the data."""
+
         df = df.with_columns(
-            (polars.col("studied_seconds") / 60).alias("studied_minutes")
+            [
+                (polars.col("studied_seconds") / 60).alias("studied_minutes"),
+                (polars.col("studied_seconds") / 3600).alias("studied_hours"),
+            ]
         )
+
         if len(df) != 0:
             ts_min = df["timestamp"].min()
             ts_max = df["timestamp"].max()
@@ -49,7 +54,18 @@ class StatisticsPage(QWidget):
 
             # Fill missing values with 0
             joined = full_range.join(df, on="timestamp", how="left")
-            joined = joined.with_columns(polars.col("studied_minutes").fill_null(0))
+            joined = joined.with_columns(
+                [
+                    polars.col("studied_seconds").fill_null(0),
+                    polars.col("studied_minutes").fill_null(0),
+                    polars.col("studied_hours").fill_null(0),
+                ]
+            )
+            # Add date field to be able to group by date
+            joined = joined.with_columns(
+                polars.col("timestamp").dt.date().alias("date")
+            )
+
             return joined
         return df
 
