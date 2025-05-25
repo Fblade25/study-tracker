@@ -3,7 +3,13 @@ import datetime
 import polars
 from components.dropdown import SubjectDropdown
 from components.graphs import TimeSeriesGraphWidget
-from PySide6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QButtonGroup,
+    QHBoxLayout,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 from util.constants import DATA_FILE
 from util.util import get_data_path
 
@@ -18,6 +24,26 @@ class StatisticsPage(QWidget):
         self.subject_dropdown.load_subjects_in_dropdown()
         self.subject_dropdown.currentIndexChanged.connect(self.update_plots)
         self.layout.addWidget(self.subject_dropdown)
+
+        zoom_layout = QHBoxLayout()
+
+        # Add navigation buttons
+        button_left = QPushButton("◄")
+        zoom_layout.addWidget(button_left)
+        button_right = QPushButton("►")
+
+        self.zoom_buttons = QButtonGroup(self)
+        for label in ["Day", "Week", "Month", "Year"]:
+            button = QPushButton(label)
+            button.setCheckable(True)
+            zoom_layout.addWidget(button)
+            self.zoom_buttons.addButton(button)
+
+        zoom_layout.addWidget(button_right)
+
+        # self.zoom_buttons.buttonClicked.connect()
+        self.zoom_buttons.buttons()[0].setChecked(True)
+        self.layout.addLayout(zoom_layout)
 
         self.study_time_graph = TimeSeriesGraphWidget(self)
         self.layout.addWidget(self.study_time_graph)
