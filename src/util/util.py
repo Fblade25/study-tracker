@@ -1,3 +1,4 @@
+import datetime
 import os
 import pathlib
 import sys
@@ -23,69 +24,68 @@ def get_data_path() -> pathlib.Path:
     return base_data_dir
 
 
-def custom_date_formatter(timestamps):
-    # Return a formatter that just returns empty labels if no data
+def custom_date_formatter(timestamps: list[datetime.datetime], zoom_level: str):
+    # Defensive empty check
     if not timestamps:
         return FuncFormatter(lambda x, _: "")
 
-    # Convert timestamps to naive dates for comparison
-    dates = [timestamp.date() for timestamp in timestamps]
-
     def formatter(x, _):
-        datetime = mdates.num2date(x).replace(tzinfo=None)
-        closest_index = min(
-            range(len(timestamps)), key=lambda i: abs(timestamps[i] - datetime)
-        )
-        # Check if this tick is the first or a new day boundary
-        if closest_index == 0 or (
-            closest_index > 0 and dates[closest_index] != dates[closest_index - 1]
-        ):
-            return datetime.strftime("%b %d %H:%M")  # e.g. May 18 18:00
+        dt = mdates.num2date(x).replace(tzinfo=None)
+
+        if zoom_level == "Day":
+            # Show hour
+            return dt.strftime("%H")
+
+        elif zoom_level == "Week":
+            # Show weekday name
+            return dt.strftime("%A")
+
+        elif zoom_level == "Month":
+            # Show just month and day
+            return dt.strftime("%d")
+
+        elif zoom_level == "Year":
+            # Show month and year
+            return dt.strftime("%b")
+
         else:
-            return datetime.strftime("%H:%M")  # just time
+            return dt.strftime("%Y-%m-%d %H:%M")
 
     return FuncFormatter(formatter)
 
 
-def set_xaxis_labels(ax, timestamps):
-    # Set the formatter
-    ax.xaxis.set_major_formatter(custom_date_formatter(timestamps))
+def set_xaxis_labels(ax, timestamps: list[datetime.datetime], zoom_level: str):
+    ax.xaxis.set_major_formatter(custom_date_formatter(timestamps, zoom_level))
 
-    # Start by getting the locations matplotlib chooses
-    locs = ax.get_xticks()
+    if not timestamps:
+        return
 
-    # Find the closest timestamp for each tick location
-    def find_closest_index(x):
-        return min(
-            range(len(timestamps)),
-            key=lambda i: abs(timestamps[i] - mdates.num2date(x).replace(tzinfo=None)),
-        )
+    max_ticks = 12
 
-    closest_indexes = []
-    if timestamps:
-        closest_indexes = [find_closest_index(x) for x in locs]
+    if zoom_level == "Day":
+        # For day zoom, show hourly ticks (assumed timestamps cover the day hourly)
+        start = timestamps[0].replace(minute=0, second=0, microsecond=0)
+        end = timestamps[-1].replace(minute=0, second=0, microsecond=0)
+        hours = []
+        current = start
+        while current <= end:
+            hours.append(current)
+            current += datetime.timedelta(hours=1)
+        ax.set_xticks([mdates.date2num(h) for h in hours])
+        ax.tick_params(axis="x", rotation=30)
+        return
 
-    # Mark ticks at midnightimestamp (hour=0, min=0)
-    midnight_indexes = [
-        i
-        for i, timestamp in enumerate(timestamps)
-        if timestamp.hour == 0 and timestamp.minute == 0
-    ]
-
-    # Keep midnight ticks, and then add others spaced evenly but not too close
-    max_ticks = 5
-    non_midnight_indexes = sorted(set(closest_indexes) - set(midnight_indexes))
-
-    remaining_slots = max_ticks - len(midnight_indexes)
-    if remaining_slots > 0 and non_midnight_indexes:
-        step = max(1, len(non_midnight_indexes) // (max_ticks - len(midnight_indexes)))
-        selected_non_midnight = non_midnight_indexes[::step]
+    # For other zoom levels, pick evenly spaced ticks from timestamps
+    n = len(timestamps)
+    if n <= max_ticks:
+        selected_indexes = list(range(n))
     else:
-        selected_non_midnight = []
+        step = n // max_ticks
+        selected_indexes = list(range(0, n, step))
+        # Make sure last index is included
+        if selected_indexes[-1] != n - 1:
+            selected_indexes.append(n - 1)
 
-    selected_indexes = sorted(set(midnight_indexes + selected_non_midnight))
-
-    # Get positions for these indices
     selected_locs = [mdates.date2num(timestamps[i]) for i in selected_indexes]
 
     ax.set_xticks(selected_locs)

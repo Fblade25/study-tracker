@@ -4,9 +4,12 @@ import polars
 from components.dropdown import SubjectDropdown
 from components.graphs import TimeSeriesGraphWidget
 from dateutil.relativedelta import relativedelta
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QButtonGroup,
     QHBoxLayout,
+    QLabel,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -32,9 +35,8 @@ class StatisticsPage(QWidget):
         self.timestamp_end: datetime.datetime | None = None
         self.zoom_delta = None
 
-        zoom_layout = QHBoxLayout()
-
         # Add navigation buttons
+        zoom_layout = QHBoxLayout()
         button_left = QPushButton("◄")
         button_right = QPushButton("►")
         button_left.clicked.connect(lambda: self.move_zoom_level("left"))
@@ -54,6 +56,16 @@ class StatisticsPage(QWidget):
         zoom_layout.addWidget(button_right)
         self.layout.addLayout(zoom_layout)
 
+        # Add label for current range
+        self.date_range_label = QLabel("")
+        font = QFont()
+        font.setPointSize(30)
+        font.setWeight(QFont.Bold)
+        self.date_range_label.setFont(font)
+        self.date_range_label.setAlignment(Qt.AlignCenter)
+        self.layout.addWidget(self.date_range_label)
+
+        # Add graph widgets
         self.study_time_graph = TimeSeriesGraphWidget(self)
         self.layout.addWidget(self.study_time_graph)
 
@@ -65,6 +77,26 @@ class StatisticsPage(QWidget):
             self.subject_dropdown.get_current_subject()
         )
 
+    def update_date_range_label(self) -> None:
+        """Updates the label of the date range."""
+        zoom_level = self.zoom_buttons.checkedButton().text()
+        if zoom_level == "Day":
+            fmt = "%b %d, %Y"
+        elif zoom_level == "Week":
+            fmt = "%b %d, %Y"
+            text = f"{self.timestamp_start.strftime(fmt)}\
+            - {self.timestamp_end.strftime(fmt)}"
+            self.date_range_label.setText(text)
+            return
+        elif zoom_level == "Month":
+            fmt = "%b %Y"
+        elif zoom_level == "Year":
+            fmt = "%Y"
+        else:
+            fmt = "%Y-%m-%d"
+        text = f"{self.timestamp_start.strftime(fmt)}"
+        self.date_range_label.setText(text)
+
     def move_zoom_level(self, direction: str) -> None:
         """Moves the zoom level left or right."""
         if direction == "left":
@@ -73,6 +105,7 @@ class StatisticsPage(QWidget):
         else:
             self.timestamp_start += self.zoom_delta
             self.timestamp_end += self.zoom_delta
+        self.update_date_range_label()
         self.update_plots(reset=True)
 
     def set_zoom_level(self, button: QPushButton) -> None:
@@ -99,6 +132,7 @@ class StatisticsPage(QWidget):
                 self.timestamp_start = current_day.replace(month=1, day=1)
         self.timestamp_end = self.timestamp_start + self.zoom_delta
         # Update data
+        self.update_date_range_label()
         self.update_plots(reset=True)
 
     def preprocess_data(self, df: polars.DataFrame) -> polars.DataFrame:
@@ -160,4 +194,7 @@ class StatisticsPage(QWidget):
 
             if reset:
                 self.study_time_graph.reset_values()
-            self.study_time_graph.load_data(df_processed, "Study time")
+
+            # Update plots
+            zoom_level = self.zoom_buttons.checkedButton().text()
+            self.study_time_graph.load_data(df_processed, "Study time", zoom_level)

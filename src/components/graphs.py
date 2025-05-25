@@ -59,22 +59,62 @@ class TimeSeriesGraphWidget(QWidget):
         self._ylim = None
         self.figure.clear()
 
-    def load_data(self, df: polars.DataFrame, title: str):
-        """Loads data for plotting."""
-        max_bars = 50
-        if df.shape[0] > max_bars:
-            df = df.group_by("date").agg(polars.col("studied_hours").sum())
-            df = df.with_columns(
-                polars.col("date").cast(polars.Datetime).alias("timestamp")
+    def aggregate_data(
+        self, df: polars.DataFrame, zoom_level: str
+    ) -> tuple[polars.DataFrame, str]:
+        """Aggregates data for plotting based on zoom level."""
+
+        if zoom_level in ("Week", "Month"):
+            # Group by date, sum studied_hours as 'value'
+            grouped = (
+                df.group_by("date")
+                .agg(polars.col("studied_hours").sum().alias("value"))
+                .sort("date")
+                .with_columns(
+                    polars.col("date").cast(polars.Datetime).alias("timestamp")
+                )
+                .select(["timestamp", "value"])
+            )
+            return grouped, "Hours"
+
+        elif zoom_level == "Year":
+            if "year" not in df.columns:
+                raise ValueError(
+                    "DataFrame must have 'year' column for 'Year' zoom level"
+                )
+
+            grouped = (
+                df.group_by(["year", "month"])
+                .agg(polars.col("studied_hours").sum().alias("value"))
+                .sort(["year", "month"])
             )
 
-            ylabel = "Studied Hours"
-            values = df.sort("timestamp")["studied_hours"].to_list()
-        else:
-            ylabel = "Studied Minutes"
-            values = df.sort("timestamp")["studied_minutes"].to_list()
+            grouped = grouped.with_columns(
+                (
+                    polars.col("year").cast(str)
+                    + "-"
+                    + polars.col("month").cast(str).str.zfill(2)
+                    + "-01"
+                )
+                .str.strptime(polars.Datetime, "%Y-%m-%d")
+                .alias("timestamp")
+            ).select(["timestamp", "value"])
 
-        timestamps = df.sort("timestamp")["timestamp"].to_list()
+            return grouped, "Hours"
+
+        else:
+            # No aggregation, just rename studied_minutes to value
+            df = df.with_columns(polars.col("studied_minutes").alias("value"))
+            return df.sort("timestamp").select(["timestamp", "value"]), "Minutes"
+
+    def load_data(self, df: polars.DataFrame, title: str, zoom_level: str):
+        """Loads data for plotting."""
+
+        df, ylabel = self.aggregate_data(df, zoom_level)
+
+        timestamps = df["timestamp"].to_list()
+        values = df["value"].to_list()
+
         self._max_value = max(values) if values else 1
 
         self._timestamps = timestamps
@@ -105,7 +145,7 @@ class TimeSeriesGraphWidget(QWidget):
             self._ax.grid(True, axis="y", color=self.colors["grid"])
 
             # Use custom formatter for x-labels
-            set_xaxis_labels(self._ax, timestamps)
+            set_xaxis_labels(self._ax, timestamps, zoom_level)
 
         if ylim_changed:
             self._ax.set_ylim(0, self._ylim)
