@@ -22,16 +22,22 @@ class StatisticsPage(QWidget):
 
         self.subject_dropdown = SubjectDropdown()
         self.subject_dropdown.load_subjects_in_dropdown()
-        self.subject_dropdown.currentIndexChanged.connect(self.update_plots)
+        self.subject_dropdown.currentIndexChanged.connect(
+            lambda: self.update_plots(True)
+        )
         self.layout.addWidget(self.subject_dropdown)
+
+        self.timestamp_start: datetime.datetime | None = None
+        self.timestamp_end: datetime.datetime | None = None
 
         zoom_layout = QHBoxLayout()
 
         # Add navigation buttons
         button_left = QPushButton("◄")
-        zoom_layout.addWidget(button_left)
+
         button_right = QPushButton("►")
 
+        zoom_layout.addWidget(button_left)
         self.zoom_buttons = QButtonGroup(self)
         for label in ["Day", "Week", "Month", "Year"]:
             button = QPushButton(label)
@@ -39,28 +45,47 @@ class StatisticsPage(QWidget):
             zoom_layout.addWidget(button)
             self.zoom_buttons.addButton(button)
 
-        zoom_layout.addWidget(button_right)
-
-        # self.zoom_buttons.buttonClicked.connect()
+        self.zoom_buttons.buttonClicked.connect()
         self.zoom_buttons.buttons()[0].setChecked(True)
+
+        zoom_layout.addWidget(button_right)
         self.layout.addLayout(zoom_layout)
 
         self.study_time_graph = TimeSeriesGraphWidget(self)
         self.layout.addWidget(self.study_time_graph)
 
-    def update_subject_list(self):
+    def update_subject_list(self) -> None:
         self.subject_dropdown.load_subjects_in_dropdown(
             self.subject_dropdown.get_current_subject()
         )
 
-    def preprocess_data(self, df: polars.DataFrame):
+    def set_zoom_level(self, button: QPushButton) -> None:
+        """Changes the zoom level of which data to view."""
+        zoom = button.text()
+        match zoom:
+            case "Day":
+                pass
+            case "Week":
+                pass
+            case "Month":
+                pass
+            case "Year":
+                pass
+
+    def preprocess_data(self, df: polars.DataFrame) -> polars.DataFrame:
         """Preprocesses the data."""
+
         df = df.with_columns(
-            (polars.col("studied_seconds") / 60).alias("studied_minutes")
+            [
+                (polars.col("studied_seconds") / 60).alias("studied_minutes"),
+                (polars.col("studied_seconds") / 3600).alias("studied_hours"),
+            ]
         )
+
         if len(df) != 0:
             ts_min = df["timestamp"].min()
             ts_max = df["timestamp"].max()
+            print(ts_max)
 
             # Add timestamp data for hours
             hours = []
@@ -73,11 +98,22 @@ class StatisticsPage(QWidget):
 
             # Fill missing values with 0
             joined = full_range.join(df, on="timestamp", how="left")
-            joined = joined.with_columns(polars.col("studied_minutes").fill_null(0))
+            joined = joined.with_columns(
+                [
+                    polars.col("studied_seconds").fill_null(0),
+                    polars.col("studied_minutes").fill_null(0),
+                    polars.col("studied_hours").fill_null(0),
+                ]
+            )
+            # Add date field to be able to group by date
+            joined = joined.with_columns(
+                polars.col("timestamp").dt.date().alias("date")
+            )
+
             return joined
         return df
 
-    def update_plots(self):
+    def update_plots(self, reset=False):
         """"""
         subject = self.subject_dropdown.get_current_subject()
 
@@ -88,4 +124,6 @@ class StatisticsPage(QWidget):
 
             df_processed = self.preprocess_data(df)
 
+            if reset:
+                self.study_time_graph.reset_values()
             self.study_time_graph.load_data(df_processed, "Study time")
