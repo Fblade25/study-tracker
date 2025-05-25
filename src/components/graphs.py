@@ -118,6 +118,14 @@ class TimeSeriesGraphWidget(QWidget):
         self._max_value = max(values) if values else 1
 
         self._timestamps = timestamps
+
+        # Save current values as previous before updating
+        if self._values is None:
+            self._previous_values = [0] * len(values)
+        else:
+            # Keep old values as previous
+            self._previous_values = self._values
+
         self._values = values
 
         ylim_changed = False
@@ -150,16 +158,6 @@ class TimeSeriesGraphWidget(QWidget):
         if ylim_changed:
             self._ax.set_ylim(0, self._ylim)
             self.canvas.draw()
-
-        if self._previous_values is None:
-            self._previous_values = [0] * len(values)
-        else:
-            self._previous_values = self._values
-            # Match size
-            if len(self._previous_values) < len(self._values):
-                self._previous_values = self._previous_values + [0] * (
-                    len(self._values) - len(self._previous_values)
-                )
 
         self._bars = self._ax.bar(
             timestamps,
