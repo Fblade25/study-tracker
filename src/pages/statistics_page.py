@@ -3,6 +3,7 @@ import datetime
 import polars
 from components.dropdown import SubjectDropdown
 from components.graphs import TimeSeriesGraphWidget
+from dateutil.relativedelta import relativedelta
 from PySide6.QtWidgets import (
     QButtonGroup,
     QHBoxLayout,
@@ -29,13 +30,15 @@ class StatisticsPage(QWidget):
 
         self.timestamp_start: datetime.datetime | None = None
         self.timestamp_end: datetime.datetime | None = None
+        self.zoom_delta = None
 
         zoom_layout = QHBoxLayout()
 
         # Add navigation buttons
         button_left = QPushButton("◄")
-
         button_right = QPushButton("►")
+        button_left.clicked.connect(lambda: self.move_zoom_level("left"))
+        button_right.clicked.connect(lambda: self.move_zoom_level("right"))
 
         zoom_layout.addWidget(button_left)
         self.zoom_buttons = QButtonGroup(self)
@@ -45,7 +48,7 @@ class StatisticsPage(QWidget):
             zoom_layout.addWidget(button)
             self.zoom_buttons.addButton(button)
 
-        self.zoom_buttons.buttonClicked.connect()
+        self.zoom_buttons.buttonClicked.connect(self.set_zoom_level)
         self.zoom_buttons.buttons()[0].setChecked(True)
 
         zoom_layout.addWidget(button_right)
@@ -54,23 +57,49 @@ class StatisticsPage(QWidget):
         self.study_time_graph = TimeSeriesGraphWidget(self)
         self.layout.addWidget(self.study_time_graph)
 
+        # Set default to days
+        self.set_zoom_level(self.zoom_buttons.buttons()[0])
+
     def update_subject_list(self) -> None:
         self.subject_dropdown.load_subjects_in_dropdown(
             self.subject_dropdown.get_current_subject()
         )
 
+    def move_zoom_level(self, direction: str) -> None:
+        """Moves the zoom level left or right."""
+        if direction == "left":
+            self.timestamp_start -= self.zoom_delta
+            self.timestamp_end -= self.zoom_delta
+        else:
+            self.timestamp_start += self.zoom_delta
+            self.timestamp_end += self.zoom_delta
+        self.update_plots(reset=True)
+
     def set_zoom_level(self, button: QPushButton) -> None:
         """Changes the zoom level of which data to view."""
         zoom = button.text()
+        current_day = datetime.datetime.now().replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        # Set start and end time
         match zoom:
             case "Day":
-                pass
+                self.zoom_delta = datetime.timedelta(days=1)
+                self.timestamp_start = current_day
             case "Week":
-                pass
+                self.zoom_delta = datetime.timedelta(days=7)
+                self.timestamp_start = current_day - datetime.timedelta(
+                    days=current_day.weekday()
+                )
             case "Month":
-                pass
+                self.zoom_delta = relativedelta(months=1)
+                self.timestamp_start = current_day.replace(day=1)
             case "Year":
-                pass
+                self.zoom_delta = relativedelta(years=1)
+                self.timestamp_start = current_day.replace(month=1, day=1)
+        self.timestamp_end = self.timestamp_start + self.zoom_delta
+        # Update data
+        self.update_plots(reset=True)
 
     def preprocess_data(self, df: polars.DataFrame) -> polars.DataFrame:
         """Preprocesses the data."""
@@ -83,14 +112,16 @@ class StatisticsPage(QWidget):
         )
 
         if len(df) != 0:
-            ts_min = df["timestamp"].min()
-            ts_max = df["timestamp"].max()
-            print(ts_max)
+            # Filter timestamps
+            df = df.filter(
+                (polars.col("timestamp") >= self.timestamp_start)
+                & (polars.col("timestamp") < self.timestamp_end)
+            )
 
             # Add timestamp data for hours
             hours = []
-            current = ts_min
-            while current <= ts_max:
+            current = self.timestamp_start
+            while current < self.timestamp_end:
                 hours.append(current)
                 current += datetime.timedelta(hours=1)
 
@@ -105,11 +136,14 @@ class StatisticsPage(QWidget):
                     polars.col("studied_hours").fill_null(0),
                 ]
             )
-            # Add date field to be able to group by date
+            # Add fields to be able to group by date, month, and year
             joined = joined.with_columns(
-                polars.col("timestamp").dt.date().alias("date")
+                [
+                    polars.col("timestamp").dt.date().alias("date"),
+                    polars.col("timestamp").dt.month().alias("month"),
+                    polars.col("timestamp").dt.year().alias("year"),
+                ]
             )
-
             return joined
         return df
 

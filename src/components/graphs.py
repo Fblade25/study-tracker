@@ -27,6 +27,7 @@ class TimeSeriesGraphWidget(QWidget):
         self._ax = None
         self._bars = None
         self._animation = None
+        self._ylim = None
 
     def get_colors(self) -> dict[str, str]:
         """Returns a dictionary of theme colors."""
