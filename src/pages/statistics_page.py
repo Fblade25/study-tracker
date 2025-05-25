@@ -84,8 +84,8 @@ class StatisticsPage(QWidget):
             fmt = "%b %d, %Y"
         elif zoom_level == "Week":
             fmt = "%b %d, %Y"
-            text = f"{self.timestamp_start.strftime(fmt)}\
-            - {self.timestamp_end.strftime(fmt)}"
+            text = f"{self.timestamp_start.strftime(fmt)} \
+- {self.timestamp_end.strftime(fmt)}"
             self.date_range_label.setText(text)
             return
         elif zoom_level == "Month":
