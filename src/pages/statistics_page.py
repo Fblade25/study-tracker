@@ -1,6 +1,5 @@
 import datetime
 
-import polars
 from components.dropdown import SubjectDropdown
 from components.graphs import BarPlotWidget
 from dateutil.relativedelta import relativedelta
@@ -14,8 +13,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from util.constants import DATA_FILE
-from util.util import get_data_path
+from util.util import get_processed_df_from_subject
 
 
 class StatisticsPage(QWidget):
@@ -65,7 +63,7 @@ class StatisticsPage(QWidget):
         self.date_range_label.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(self.date_range_label)
 
-        # Add graph widgets
+        # Add plot widgets
         self.study_time_bar_plot = BarPlotWidget(self)
         self.layout.addWidget(self.study_time_bar_plot)
 
@@ -135,62 +133,14 @@ class StatisticsPage(QWidget):
         self.update_date_range_label()
         self.update_plots(reset=True)
 
-    def preprocess_data(self, df: polars.DataFrame) -> polars.DataFrame:
-        """Preprocesses the data."""
-
-        df = df.with_columns(
-            [
-                (polars.col("studied_seconds") / 60).alias("studied_minutes"),
-                (polars.col("studied_seconds") / 3600).alias("studied_hours"),
-            ]
-        )
-
-        if len(df) != 0:
-            # Filter timestamps
-            df = df.filter(
-                (polars.col("timestamp") >= self.timestamp_start)
-                & (polars.col("timestamp") < self.timestamp_end)
-            )
-
-            # Add timestamp data for hours
-            hours = []
-            current = self.timestamp_start
-            while current < self.timestamp_end:
-                hours.append(current)
-                current += datetime.timedelta(hours=1)
-
-            full_range = polars.DataFrame({"timestamp": hours})
-
-            # Fill missing values with 0
-            joined = full_range.join(df, on="timestamp", how="left")
-            joined = joined.with_columns(
-                [
-                    polars.col("studied_seconds").fill_null(0),
-                    polars.col("studied_minutes").fill_null(0),
-                    polars.col("studied_hours").fill_null(0),
-                ]
-            )
-            # Add fields to be able to group by date, month, and year
-            joined = joined.with_columns(
-                [
-                    polars.col("timestamp").dt.date().alias("date"),
-                    polars.col("timestamp").dt.month().alias("month"),
-                    polars.col("timestamp").dt.year().alias("year"),
-                ]
-            )
-            return joined
-        return df
-
     def update_plots(self, reset=False):
-        """"""
+        """Updates plots on this page."""
         subject = self.subject_dropdown.get_current_subject()
 
         if subject:
-            data_path = get_data_path() / DATA_FILE.format(subject_name=subject)
-
-            df = polars.read_parquet(data_path)
-
-            df_processed = self.preprocess_data(df)
+            df_processed = get_processed_df_from_subject(
+                subject, self.timestamp_start, self.timestamp_end
+            )
 
             if reset:
                 self.study_time_bar_plot.reset_values()

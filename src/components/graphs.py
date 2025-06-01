@@ -4,7 +4,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 from styles.colors import Colors
-from util.util import set_xaxis_labels
+from util.util import ease_in_out_quad, set_xaxis_labels
 
 
 class AbstractPlotWidget(QWidget):
@@ -190,15 +190,10 @@ class BarPlotWidget(AbstractPlotWidget):
 
         self.canvas.draw()
 
-    def ease_in_out_quad(self, frame):
-        if frame < 0.5:
-            return 2 * frame * frame
-        return -1 + (4 - 2 * frame) * frame
-
     def animate(self, i):
         frames = 30
         frame = i / frames
-        eased_t = self.ease_in_out_quad(frame)
+        eased_t = ease_in_out_quad(frame)
         for bar, value, previous_value in zip(
             self._bars, self._values, self._previous_values, strict=False
         ):
@@ -206,3 +201,127 @@ class BarPlotWidget(AbstractPlotWidget):
             height = eased_t * delta + previous_value
             bar.set_height(height)
         return self._bars
+
+
+class PieChartWidget(AbstractPlotWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self._previous_total_hours = 0.0
+        self._total_hours = 0.0
+
+        self._labels = None
+
+    def reset_values(self):
+        """Resets certain values when changing data source."""
+        self._ax = None
+        self._previous_total_hours = 0.0
+        self._total_hours = 0.0
+        self._labels = None
+        self.canvas.clear()
+
+    def load_data(self, dfs: dict[str, polars.DataFrame]):
+        """Loads data for plotting."""
+
+        # Calculate hourly sums for each subject
+        data = [
+            (subject, float(df["studied_hours"].sum())) for subject, df in dfs.items()
+        ]
+
+        if not data:
+            return  # Nothing to plot
+
+        labels, values = zip(*data, strict=False)
+        total = sum(values)
+
+        # Separate small slices (<1%) into "Other"
+        main_labels = []
+        main_values = []
+        other_value = 0
+
+        for label, value in zip(labels, values, strict=False):
+            if value / total < 0.01:
+                other_value += value
+            else:
+                main_labels.append(label)
+                main_values.append(value)
+
+        if other_value > 0:
+            main_labels.append("Other")
+            main_values.append(other_value)
+
+        # Save old total for center text animation
+        self._previous_total_hours = self._total_hours
+        self._total_hours = sum(main_values)
+
+        labels_changed = self._labels != main_labels
+        values_changed = self._values != main_values
+
+        # Create pie chart if labels have changed
+        if labels_changed or values_changed:
+            self._labels = main_labels
+            self._previous_values = self._values
+            self._values = main_values
+
+            self.figure.clear()
+            self._ax = self.figure.add_subplot(111)
+            self._ax.set_facecolor(self.colors["background"])
+
+            wedges, texts, autotexts = self._ax.pie(
+                main_values,
+                labels=main_labels,
+                autopct=lambda pct: f"{pct:.1f}%" if pct >= 1 else "",
+                wedgeprops=dict(width=0.4, edgecolor="w"),
+                startangle=90,
+                pctdistance=0.85,
+                labeldistance=1.05,
+            )
+
+            # Adjust label colors
+            for text in texts + autotexts:
+                text.set_color(self.colors["text"])
+                text.set_fontsize(11)
+                text.set_fontweight("bold")
+
+            # Create center text
+            self._center_text = self._ax.text(
+                0,
+                0,
+                "0.0h",
+                ha="center",
+                va="center",
+                fontsize=20,
+                fontweight="bold",
+                color=self.colors["text"],
+            )
+        else:
+            self._previous_values = self._values
+            self._values = main_values
+
+        # Animation
+        self._animation = FuncAnimation(
+            self.figure,
+            self.animate_center_text,
+            frames=30,
+            interval=1000 // 60,
+            blit=True,
+            repeat=False,
+        )
+
+        print(f"labels: {self._labels}")
+        print(f"values: {self._values}")
+        print(f"previous_values: {self._previous_values}")
+
+        self.canvas.draw()
+
+    def animate_center_text(self, i):
+        frames = 30
+        t = ease_in_out_quad(i / frames)
+
+        current_total = (
+            self._previous_total_hours
+            + (self._total_hours - self._previous_total_hours) * t
+        )
+        self._center_text.set_text(f"{current_total:.1f}h")
+
+        return [self._center_text]

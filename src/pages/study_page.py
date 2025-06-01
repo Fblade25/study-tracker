@@ -153,6 +153,7 @@ class StudyPage(QWidget):
 
             # Update data on statistics statistics page
             self.window().page_statistics.update_plots()
+            self.window().page_home.update_plots()
 
     def timer_button_event(self, event) -> None:
         """Start/stop timer and change text of button."""
