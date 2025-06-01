@@ -308,10 +308,6 @@ class PieChartWidget(AbstractPlotWidget):
             repeat=False,
         )
 
-        print(f"labels: {self._labels}")
-        print(f"values: {self._values}")
-        print(f"previous_values: {self._previous_values}")
-
         self.canvas.draw()
 
     def animate_center_text(self, i):
