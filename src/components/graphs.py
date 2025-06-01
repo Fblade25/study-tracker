@@ -4,7 +4,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 from styles.colors import Colors
-from util.util import set_xaxis_labels
+from util.util import ease_in_out_quad, set_xaxis_labels
 
 
 class AbstractPlotWidget(QWidget):
@@ -190,15 +190,10 @@ class BarPlotWidget(AbstractPlotWidget):
 
         self.canvas.draw()
 
-    def ease_in_out_quad(self, frame):
-        if frame < 0.5:
-            return 2 * frame * frame
-        return -1 + (4 - 2 * frame) * frame
-
     def animate(self, i):
         frames = 30
         frame = i / frames
-        eased_t = self.ease_in_out_quad(frame)
+        eased_t = ease_in_out_quad(frame)
         for bar, value, previous_value in zip(
             self._bars, self._values, self._previous_values, strict=False
         ):
@@ -212,8 +207,12 @@ class PieChartWidget(AbstractPlotWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self._previous_total_hours = 0.0
+        self._total_hours = 0.0
+
     def reset_values(self):
         """Resets certain values when changing data source."""
+        self._ax = None
         self._values = None
         self._previous_values = None
         self.canvas.clear()
@@ -221,7 +220,7 @@ class PieChartWidget(AbstractPlotWidget):
     def load_data(self, dfs: dict[str, polars.DataFrame]):
         """Loads data for plotting."""
 
-        ax = self.figure.add_subplot(111)
+        self._ax = self.figure.add_subplot(111)
 
         # Calculate hourly sums for each subject
         data = [(subject, df["studied_hours"].sum()) for subject, df in dfs.items()]
@@ -251,7 +250,7 @@ class PieChartWidget(AbstractPlotWidget):
         self._values = main_values
 
         # Create pie chart
-        wedges, texts, autotexts = ax.pie(
+        wedges, texts, autotexts = self._ax.pie(
             main_values,
             labels=main_labels,
             autopct=lambda pct: f"{pct:.1f}%" if pct >= 1 else "",
@@ -261,12 +260,13 @@ class PieChartWidget(AbstractPlotWidget):
             labeldistance=1.05,
         )
 
-        total_hours = sum(main_values)
         # Create center text
-        ax.text(
+        self._previous_total_hours = self._total_hours
+        self._total_hours = sum(main_values)
+        self._center_text = self._ax.text(
             0,
             0,
-            f"{total_hours:.1f}h",
+            "0.0h",
             ha="center",
             va="center",
             fontsize=20,
@@ -274,7 +274,17 @@ class PieChartWidget(AbstractPlotWidget):
             color=self.colors["text"],
         )
 
-        ax.set_facecolor(self.colors["background"])
+        # Animation
+        self._animation = FuncAnimation(
+            self.figure,
+            self.animate_center_text,
+            frames=30,
+            interval=1000 // 60,
+            blit=True,
+            repeat=False,
+        )
+
+        self._ax.set_facecolor(self.colors["background"])
 
         # Adjust label colors
         for text in texts + autotexts:
@@ -283,3 +293,11 @@ class PieChartWidget(AbstractPlotWidget):
             text.set_fontweight("bold")
 
         self.canvas.draw()
+
+    def animate_center_text(self, i):
+        frames = 30
+        t = ease_in_out_quad(i / frames)
+        delta = self._total_hours - self._previous_total_hours
+        value = t * delta + self._previous_total_hours
+        self._center_text.set_text(f"{value:.1f}h")
+        return [self._center_text]

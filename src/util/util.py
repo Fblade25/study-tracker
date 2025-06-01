@@ -166,3 +166,9 @@ def set_xaxis_labels(ax, timestamps: list[datetime.datetime], zoom_level: str):
 
     ax.set_xticks(selected_locs)
     ax.tick_params(axis="x", rotation=30)
+
+
+def ease_in_out_quad(frame):
+    if frame < 0.5:
+        return 2 * frame * frame
+    return -1 + (4 - 2 * frame) * frame
