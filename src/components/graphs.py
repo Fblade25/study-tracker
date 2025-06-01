@@ -7,7 +7,7 @@ from styles.colors import Colors
 from util.util import set_xaxis_labels
 
 
-class TimeSeriesGraphWidget(QWidget):
+class AbstractPlotWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -25,9 +25,6 @@ class TimeSeriesGraphWidget(QWidget):
         self._previous_values = None
 
         self._ax = None
-        self._bars = None
-        self._animation = None
-        self._ylim = None
 
     def get_colors(self) -> dict[str, str]:
         """Returns a dictionary of theme colors."""
@@ -39,25 +36,9 @@ class TimeSeriesGraphWidget(QWidget):
             "bar_edge": Colors.PRIMARY,
         }
 
-    def get_bar_width(self, timestamps: list[polars.Datetime]) -> float:
-        """Calculates bar width based on timestamp range."""
-        if len(timestamps) > 1:
-            range_days = (max(timestamps) - min(timestamps)).total_seconds() / 86400
-            spacing = range_days / (len(timestamps) - 1)
-            bar_width = spacing * 0.9
-            return bar_width
-        return 1.0
-
     def reset_values(self):
-        """Resets certain values when changing data source."""
-        self._ax = None
-        self._bars = None
-        self._animation = None
-        self._values = None
-        self._max_value = None
-        self._previous_values = None
-        self._ylim = None
-        self.figure.clear()
+        """Should reset certain values when changing data source."""
+        pass
 
     def aggregate_data(
         self, df: polars.DataFrame, zoom_level: str
@@ -106,6 +87,35 @@ class TimeSeriesGraphWidget(QWidget):
             # No aggregation, just rename studied_minutes to value
             df = df.with_columns(polars.col("studied_minutes").alias("value"))
             return df.sort("timestamp").select(["timestamp", "value"]), "Minutes"
+
+
+class BarPlotWidget(AbstractPlotWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self._bars = None
+        self._animation = None
+        self._ylim = None
+
+    def get_bar_width(self, timestamps: list[polars.Datetime]) -> float:
+        """Calculates bar width based on timestamp range."""
+        if len(timestamps) > 1:
+            range_days = (max(timestamps) - min(timestamps)).total_seconds() / 86400
+            spacing = range_days / (len(timestamps) - 1)
+            bar_width = spacing * 0.9
+            return bar_width
+        return 1.0
+
+    def reset_values(self):
+        """Resets certain values when changing data source."""
+        self._ax = None
+        self._bars = None
+        self._animation = None
+        self._values = None
+        self._max_value = None
+        self._previous_values = None
+        self._ylim = None
+        self.figure.clear()
 
     def load_data(self, df: polars.DataFrame, title: str, zoom_level: str):
         """Loads data for plotting."""
