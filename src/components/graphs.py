@@ -206,3 +206,80 @@ class BarPlotWidget(AbstractPlotWidget):
             height = eased_t * delta + previous_value
             bar.set_height(height)
         return self._bars
+
+
+class PieChartWidget(AbstractPlotWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def reset_values(self):
+        """Resets certain values when changing data source."""
+        self._values = None
+        self._previous_values = None
+        self.canvas.clear()
+
+    def load_data(self, dfs: dict[str, polars.DataFrame]):
+        """Loads data for plotting."""
+
+        ax = self.figure.add_subplot(111)
+
+        # Calculate hourly sums for each subject
+        data = [(subject, df["studied_hours"].sum()) for subject, df in dfs.items()]
+
+        if not data:
+            return  # Nothing to plot
+
+        labels, values = zip(*data, strict=False)
+        total = sum(values)
+
+        # Separate small slices (<1%) into "Other"
+        main_labels = []
+        main_values = []
+        other_value = 0
+
+        for label, value in zip(labels, values, strict=False):
+            if value / total < 0.01:
+                other_value += value
+            else:
+                main_labels.append(label)
+                main_values.append(value)
+
+        if other_value > 0:
+            main_labels.append("Other")
+            main_values.append(other_value)
+
+        self._values = main_values
+
+        # Create pie chart
+        wedges, texts, autotexts = ax.pie(
+            main_values,
+            labels=main_labels,
+            autopct=lambda pct: f"{pct:.1f}%" if pct >= 1 else "",
+            wedgeprops=dict(width=0.4, edgecolor="w"),
+            startangle=90,
+            pctdistance=0.85,
+            labeldistance=1.05,
+        )
+
+        total_hours = sum(main_values)
+        # Create center text
+        ax.text(
+            0,
+            0,
+            f"{total_hours:.1f}h",
+            ha="center",
+            va="center",
+            fontsize=20,
+            fontweight="bold",
+            color=self.colors["text"],
+        )
+
+        ax.set_facecolor(self.colors["background"])
+
+        # Adjust label colors
+        for text in texts + autotexts:
+            text.set_color(self.colors["text"])
+            text.set_fontsize(11)
+            text.set_fontweight("bold")
+
+        self.canvas.draw()
