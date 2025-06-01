@@ -2,7 +2,7 @@ import datetime
 
 import polars
 from components.dropdown import SubjectDropdown
-from components.graphs import TimeSeriesGraphWidget
+from components.graphs import BarPlotWidget
 from dateutil.relativedelta import relativedelta
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
@@ -66,8 +66,8 @@ class StatisticsPage(QWidget):
         self.layout.addWidget(self.date_range_label)
 
         # Add graph widgets
-        self.study_time_graph = TimeSeriesGraphWidget(self)
-        self.layout.addWidget(self.study_time_graph)
+        self.study_time_bar_plot = BarPlotWidget(self)
+        self.layout.addWidget(self.study_time_bar_plot)
 
         # Set default to days
         self.set_zoom_level(self.zoom_buttons.buttons()[0])
@@ -193,8 +193,8 @@ class StatisticsPage(QWidget):
             df_processed = self.preprocess_data(df)
 
             if reset:
-                self.study_time_graph.reset_values()
+                self.study_time_bar_plot.reset_values()
 
             # Update plots
             zoom_level = self.zoom_buttons.checkedButton().text()
-            self.study_time_graph.load_data(df_processed, "Study time", zoom_level)
+            self.study_time_bar_plot.load_data(df_processed, "Study time", zoom_level)
