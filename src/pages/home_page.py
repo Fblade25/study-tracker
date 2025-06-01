@@ -1,3 +1,5 @@
+import datetime
+
 import polars
 from components.graphs import PieChartWidget
 from PySide6.QtWidgets import QVBoxLayout, QWidget
@@ -21,9 +23,12 @@ class HomePage(QWidget):
 
         if all_subjects:
             dfs: dict[str, polars.DataFrame] = {}
+            timestamp_end = datetime.datetime.now() + datetime.timedelta(days=1)
 
             for subject in all_subjects:
-                dfs[subject] = get_processed_df_from_subject(subject)
+                dfs[subject] = get_processed_df_from_subject(
+                    subject, timestamp_end=timestamp_end
+                )
 
             if reset:
                 self.total_study_time_pie_chart.reset_values()
